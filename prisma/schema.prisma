@@ -1,0 +1,107 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// 全局配置表
+// ============================================
+model GlobalConfig {
+  id String @id @default(uuid())
+  
+  // 汇率与物流
+  exchangeRate      Decimal @default(1.52) @map("exchange_rate") @db.Decimal(10, 4)
+  shippingRate      Decimal @default(5.30) @map("shipping_rate") @db.Decimal(10, 2)
+  minOperationFee   Decimal @default(0.80) @map("min_operation_fee") @db.Decimal(10, 2)
+  labelFee          Decimal @default(0.30) @map("label_fee") @db.Decimal(10, 2)
+  lastMileFee       Decimal @default(2.50) @map("last_mile_fee") @db.Decimal(10, 2)
+  
+  // 费用率
+  platformFeeRate   Decimal @default(0.1212) @map("platform_fee_rate") @db.Decimal(10, 4)
+  returnRate        Decimal @default(0.15) @map("return_rate") @db.Decimal(10, 4)
+  targetProfitMargin Decimal @default(0.25) @map("target_profit_margin") @db.Decimal(10, 4)
+  
+  // 定价策略
+  pricingStrategy   String  @default("profit") @map("pricing_strategy") @db.VarChar(20)
+  customMultiplier  Decimal? @map("custom_multiplier") @db.Decimal(10, 2)
+  
+  // 时间戳
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  // 关联 - 可选的用户系统
+  userId String? @unique @map("user_id")
+  
+  @@map("global_configs")
+}
+
+// ============================================
+// 商品表
+// ============================================
+model Product {
+  id String @id @default(uuid())
+  
+  // 基本信息
+  name        String  @default("") @db.VarChar(255)
+  url         String? @db.Text
+  description String? @db.Text
+  
+  // UI 状态
+  isExpanded   Boolean @default(true) @map("is_expanded")
+  displayOrder Int     @default(0) @map("display_order")
+  
+  // 时间戳
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  // 关联
+  variants SKU[]
+  
+  // 可选的用户系统
+  userId String? @map("user_id")
+  
+  @@index([userId])
+  @@index([displayOrder])
+  @@map("products")
+}
+
+// ============================================
+// SKU 变体表
+// ============================================
+model SKU {
+  id String @id @default(uuid())
+  
+  // 外键
+  productId String @map("product_id")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  // SKU 信息
+  skuName String @default("") @map("sku_name") @db.VarChar(255)
+  skuCode String? @map("sku_code") @db.VarChar(100)
+  
+  // 成本 (RMB)
+  purchaseCost     Decimal @default(0) @map("purchase_cost") @db.Decimal(10, 2)
+  domesticShipping Decimal @default(0) @map("domestic_shipping") @db.Decimal(10, 2)
+  packagingFee     Decimal @default(0) @map("packaging_fee") @db.Decimal(10, 2)
+  
+  // 物流
+  weight Decimal @default(0) @db.Decimal(10, 3)
+  
+  // 覆盖设置
+  returnRate       Decimal? @map("return_rate") @db.Decimal(10, 4)
+  pricingStrategy  String?  @map("pricing_strategy") @db.VarChar(20)
+  customMultiplier Decimal? @map("custom_multiplier") @db.Decimal(10, 2)
+  
+  // 时间戳
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  @@index([productId])
+  @@map("sku_variants")
+}
