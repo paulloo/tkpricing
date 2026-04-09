@@ -147,14 +147,15 @@ export function Header({ lastSaved, onAddProduct, onOpenParams }: HeaderProps) {
         <div className="flex items-center justify-between">
           {/* 左侧：Logo和标题 */}
           <div className="flex items-center gap-2 md:gap-3">
-            {/* 移动端参数按钮 */}
+            {/* 参数设置按钮 */}
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
               onClick={onOpenParams}
-              className="lg:hidden h-8 w-8 p-0"
+              className="h-8 px-2 gap-1.5 text-xs"
             >
-              <Settings2 className="h-4 w-4" />
+              <Settings2 className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">参数</span>
             </Button>
             
             <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm">

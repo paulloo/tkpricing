@@ -1,5 +1,5 @@
 // ============================================
-// SKU 表格组件 (优化版，支持移动端)
+// SKU 表格 — ERP 分组列头风格
 // ============================================
 
 import { useState, useRef, useEffect } from 'react';
@@ -15,35 +15,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Trash2, Plus, AlertCircle, CheckCircle2, TrendingUp } from 'lucide-react';
 import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import { 
-  Trash2, 
-  Plus,
-  AlertCircle,
-  CheckCircle2
-} from 'lucide-react';
-import { formatCurrency, formatPercent, getMarginColor, getMarginStatus, PRICING_STRATEGIES } from '@/lib/calculator';
+  formatCurrency,
+  formatPercent,
+  getMarginColor,
+  getMarginStatus,
+  PRICING_STRATEGIES,
+} from '@/lib/calculator';
 
 interface SKUTableProps {
   productId: string;
   skus: SKUData[];
 }
 
+// ─── EditableCell ─────────────────────────────────────────────────────────────
+
 interface EditableCellProps {
   value: number | string;
-  onChange: (value: number | string) => void;
+  onChange: (v: number | string) => void;
   type?: 'text' | 'number';
   suffix?: string;
   prefix?: string;
   min?: number;
   step?: number;
-  className?: string;
   isPercent?: boolean;
+  highlight?: boolean;
 }
 
 function EditableCell({
@@ -54,350 +51,205 @@ function EditableCell({
   prefix,
   min = 0,
   step,
-  className = '',
   isPercent = false,
+  highlight = false,
 }: EditableCellProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [localValue, setLocalValue] = useState(value.toString());
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [editing, setEditing] = useState(false);
+  const [local, setLocal] = useState(
+    value !== undefined && value !== null ? value.toString() : ''
+  );
+  const ref = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
+    setLocal(value !== undefined && value !== null ? value.toString() : '');
+  }, [value]);
+
+  useEffect(() => {
+    if (editing) {
+      ref.current?.focus();
+      ref.current?.select();
     }
-  }, [isEditing]);
+  }, [editing]);
 
-  const handleStartEdit = () => {
-    setIsEditing(true);
-    setLocalValue(value.toString());
-  };
-
-  const handleSave = () => {
+  const commit = () => {
     if (type === 'number') {
-      const num = parseFloat(localValue);
-      if (!isNaN(num)) {
-        onChange(isPercent ? num / 100 : num);
-      }
+      const n = parseFloat(local);
+      if (!isNaN(n)) onChange(isPercent ? n / 100 : n);
+      else setLocal(value?.toString() ?? '');
     } else {
-      onChange(localValue);
+      onChange(local);
     }
-    setIsEditing(false);
+    setEditing(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      handleSave();
-    } else if (e.key === 'Escape') {
-      setIsEditing(false);
-      setLocalValue(value.toString());
-    }
-  };
-
-  if (isEditing) {
+  if (editing) {
     return (
-      <div className="relative">
-        {prefix && (
-          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-            {prefix}
-          </span>
-        )}
+      <div className="relative flex items-center">
+        {prefix && <span className="absolute left-1.5 text-[10px] text-slate-400">{prefix}</span>}
         <Input
-          ref={inputRef}
+          ref={ref}
           type={type}
-          value={localValue}
-          onChange={(e) => setLocalValue(e.target.value)}
-          onBlur={handleSave}
-          onKeyDown={handleKeyDown}
+          value={local}
+          onChange={(e) => setLocal(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commit();
+            if (e.key === 'Escape') { setLocal(value?.toString() ?? ''); setEditing(false); }
+          }}
           min={min}
-          step={step || (isPercent ? 0.1 : 0.01)}
-          className={`h-7 text-xs ${prefix ? 'pl-6' : ''} ${suffix ? 'pr-6' : ''} ${className}`}
+          step={step ?? (isPercent ? 0.1 : 0.01)}
+          className={`h-6 text-xs w-full ${prefix ? 'pl-5' : ''} ${suffix ? 'pr-5' : ''}`}
         />
-        {suffix && (
-          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-            {suffix}
-          </span>
-        )}
+        {suffix && <span className="absolute right-1.5 text-[10px] text-slate-400">{suffix}</span>}
       </div>
     );
   }
 
-  const displayValue = type === 'number' && typeof value === 'number'
-    ? isPercent 
-      ? formatPercent(value)
-      : value.toFixed(value % 1 === 0 ? 0 : 2)
-    : value;
+  const display =
+    type === 'number' && typeof value === 'number'
+      ? isPercent
+        ? formatPercent(value)
+        : value % 1 === 0
+        ? value.toFixed(0)
+        : value.toFixed(2)
+      : value;
 
   return (
     <div
-      onClick={handleStartEdit}
-      className={`cursor-pointer hover:bg-amber-50 rounded px-2 py-1 transition-colors text-xs ${className}`}
+      onClick={() => setEditing(true)}
+      className={`cursor-pointer rounded px-1.5 py-0.5 text-xs hover:bg-amber-50 hover:ring-1 hover:ring-amber-200 transition-all whitespace-nowrap ${
+        highlight ? 'text-amber-700 font-semibold bg-amber-50/60' : ''
+      }`}
     >
-      {prefix}{displayValue}{suffix}
+      {prefix && <span className="text-slate-400 mr-0.5">{prefix}</span>}
+      {display}
+      {suffix && <span className="text-slate-400 ml-0.5">{suffix}</span>}
     </div>
   );
 }
 
-// 移动端SKU卡片
-function SKUMobileCard({ 
-  sku, 
-  productId, 
-  onDelete 
-}: { 
-  sku: SKUData; 
-  productId: string; 
-  onDelete: () => void;
+// ─── Column group header styles ───────────────────────────────────────────────
+
+const GRP = {
+  cost: 'bg-blue-50 text-blue-700 border-blue-100',
+  logistics: 'bg-cyan-50 text-cyan-700 border-cyan-100',
+  pricing: 'bg-emerald-50 text-emerald-700 border-emerald-100',
+  profit: 'bg-amber-50 text-amber-700 border-amber-100',
+  ops: '',
+};
+
+const TH = 'px-2 py-1 text-[10px] font-medium text-slate-500 border-b border-slate-200 whitespace-nowrap bg-slate-50';
+const TD = 'px-2 py-1 border-b border-slate-100 align-middle';
+
+// ─── Desktop table ────────────────────────────────────────────────────────────
+
+function DesktopTable({ productId, skus, onDelete, onAdd }: {
+  productId: string;
+  skus: SKUData[];
+  onDelete: (id: string) => void;
+  onAdd: () => void;
 }) {
   const { updateSKU, setSKUPricingStrategy } = useStore();
-  const calc = sku.calculated;
+  const [hovered, setHovered] = useState<string | null>(null);
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 p-3 space-y-3">
-      {/* 名称和策略 */}
-      <div className="flex items-center justify-between">
-        <EditableCell
-          value={sku.name}
-          onChange={(v) => updateSKU(productId, sku.skuId, { name: v as string })}
-          type="text"
-          className="font-medium text-slate-700 flex-1"
-        />
-        <Select
-          value={sku.pricingStrategy || 'inherit'}
-          onValueChange={(v) => setSKUPricingStrategy(productId, sku.skuId, v === 'inherit' ? null : v as PricingStrategy)}
-        >
-          <SelectTrigger className="h-7 w-20 text-xs ml-2">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="inherit">默认</SelectItem>
-            {PRICING_STRATEGIES.map((s) => (
-              <SelectItem key={s.key} value={s.key}>
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs border-collapse min-w-[1100px]">
+        <thead>
+          {/* Group header row */}
+          <tr>
+            <th rowSpan={2} className={`${TH} text-left w-32 sticky left-0 z-10 bg-slate-50 border-r border-slate-200`}>
+              SKU 名称
+            </th>
+            <th colSpan={4} className={`${GRP.cost} text-center text-[10px] font-semibold px-2 py-0.5 border-b border-x`}>
+              采购成本（RMB）
+            </th>
+            <th colSpan={1} className={`${GRP.logistics} text-center text-[10px] font-semibold px-2 py-0.5 border-b border-x`}>
+              综合成本
+            </th>
+            <th colSpan={3} className={`${GRP.pricing} text-center text-[10px] font-semibold px-2 py-0.5 border-b border-x`}>
+              定价策略
+            </th>
+            <th colSpan={5} className={`${GRP.profit} text-center text-[10px] font-semibold px-2 py-0.5 border-b border-x`}>
+              利润分析
+            </th>
+            <th rowSpan={2} className={`${TH} text-center w-8`}>
+              {/* ops */}
+            </th>
+          </tr>
+          {/* Sub-header row */}
+          <tr>
+            {/* 采购成本 */}
+            <th className={`${TH} text-right`}>采购¥</th>
+            <th className={`${TH} text-right`}>国运¥</th>
+            <th className={`${TH} text-right`}>包装¥</th>
+            <th className={`${TH} text-right`}>重量kg</th>
+            {/* 综合成本 */}
+            <th className={`${TH} text-right border-l border-cyan-100`}>总成本RM</th>
+            {/* 定价 */}
+            <th className={`${TH} text-center border-l border-emerald-100`}>策略</th>
+            <th className={`${TH} text-right`}>建议价</th>
+            <th className={`${TH} text-right`}>最终价↓</th>
+            {/* 利润 */}
+            <th className={`${TH} text-right border-l border-amber-100`}>平台扣</th>
+            <th className={`${TH} text-right`}>净利润</th>
+            <th className={`${TH} text-right`}>退货率↓</th>
+            <th className={`${TH} text-right`}>实际净利</th>
+            <th className={`${TH} text-right`}>实际率</th>
+          </tr>
+        </thead>
 
-      {/* 成本信息 */}
-      <div className="grid grid-cols-3 gap-2 text-xs">
-        <div className="bg-slate-50 rounded p-2">
-          <div className="text-slate-400 text-[10px]">采购</div>
-          <EditableCell
-            value={sku.purchaseCost}
-            onChange={(v) => updateSKU(productId, sku.skuId, { purchaseCost: v as number })}
-            prefix="¥"
-          />
-        </div>
-        <div className="bg-slate-50 rounded p-2">
-          <div className="text-slate-400 text-[10px]">重量</div>
-          <EditableCell
-            value={sku.weight}
-            onChange={(v) => updateSKU(productId, sku.skuId, { weight: v as number })}
-            suffix="kg"
-            step={0.001}
-          />
-        </div>
-        <div className="bg-slate-50 rounded p-2">
-          <div className="text-slate-400 text-[10px]">退货率</div>
-          <EditableCell
-            value={((sku.returnRate ?? 0.05) * 100)}
-            onChange={(v) => updateSKU(productId, sku.skuId, { returnRate: v as number })}
-            suffix="%"
-            isPercent
-          />
-        </div>
-      </div>
+        <tbody>
+          {skus.map((sku) => {
+            const c = sku.calculated;
+            const margin = c.actualMargin;
+            const marginColor = getMarginColor(margin);
+            const isHovered = hovered === sku.skuId;
 
-      {/* 定价和利润 */}
-      <div className="flex items-center justify-between bg-slate-50 rounded p-2">
-        <div>
-          <div className="text-[10px] text-slate-400">最终定价</div>
-          <EditableCell
-            value={sku.finalPrice ?? calc.suggestedPrice}
-            onChange={(v) => updateSKU(productId, sku.skuId, { finalPrice: v as number })}
-            prefix="RM"
-            className={sku.finalPrice ? 'text-amber-700 font-medium' : 'text-blue-700 font-medium'}
-          />
-        </div>
-        <div className="text-right">
-          <div className="text-[10px] text-slate-400">实际净利</div>
-          <div 
-            className="text-sm font-bold"
-            style={{ color: getMarginColor(calc.actualMargin) }}
-          >
-            {formatCurrency(calc.actualNetProfit)}
-          </div>
-        </div>
-      </div>
-
-      {/* 利润率 */}
-      <div className="flex items-center justify-between">
-        <Badge
-          variant="outline"
-          className="text-xs"
-          style={{
-            borderColor: getMarginColor(calc.actualMargin),
-            color: getMarginColor(calc.actualMargin),
-            backgroundColor: `${getMarginColor(calc.actualMargin)}15`,
-          }}
-        >
-          {formatPercent(calc.actualMargin)}
-        </Badge>
-        <div className="flex items-center gap-2">
-          {calc.isProfitable ? (
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-          ) : (
-            <AlertCircle className="h-4 w-4 text-red-500" />
-          )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onDelete}
-            className="h-6 w-6 p-0 text-slate-400 hover:text-red-500"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function SKUTable({ productId, skus }: SKUTableProps) {
-  const { addSKU, deleteSKU, updateSKU, setSKUPricingStrategy } = useStore();
-  const [hoveredRow, setHoveredRow] = useState<string | null>(null);
-
-  const handleAddSKU = () => {
-    addSKU(productId, true);
-  };
-
-  const handleDeleteSKU = (skuId: string) => {
-    if (skus.length <= 1) return;
-    deleteSKU(productId, skuId);
-  };
-
-  return (
-    <TooltipProvider>
-      {/* 桌面端表格 */}
-      <div className="hidden md:block overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="px-2 py-2 text-left text-xs font-medium text-slate-500 w-28">
-                SKU名称
-              </th>
-              <th className="px-2 py-2 text-right text-xs font-medium text-slate-500 w-16">
-                采购
-              </th>
-              <th className="px-2 py-2 text-right text-xs font-medium text-slate-500 w-16">
-                包装
-              </th>
-              <th className="px-2 py-2 text-right text-xs font-medium text-slate-500 w-14">
-                重量
-              </th>
-              <th className="px-2 py-2 text-right text-xs font-medium text-slate-500 w-18">
-                总成本
-              </th>
-              <th className="px-2 py-2 text-right text-xs font-medium text-slate-500 w-14">
-                退货率
-              </th>
-              <th className="px-2 py-2 text-center text-xs font-medium text-slate-500 w-20">
-                策略
-              </th>
-              <th className="px-2 py-2 text-right text-xs font-medium text-slate-500 w-18">
-                建议价
-              </th>
-              <th className="px-2 py-2 text-right text-xs font-medium text-slate-500 w-18">
-                最终定价
-              </th>
-              <th className="px-2 py-2 text-right text-xs font-medium text-slate-500 w-18">
-                平台扣费
-              </th>
-              <th className="px-2 py-2 text-right text-xs font-medium text-slate-500 w-18">
-                实际净利
-              </th>
-              <th className="px-2 py-2 text-right text-xs font-medium text-slate-500 w-14">
-                利率
-              </th>
-              <th className="px-2 py-2 text-center text-xs font-medium text-slate-500 w-12">
-                状态
-              </th>
-              <th className="px-2 py-2 text-center text-xs font-medium text-slate-500 w-10">
-                操作
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {skus.map((sku) => (
+            return (
               <tr
                 key={sku.skuId}
-                onMouseEnter={() => setHoveredRow(sku.skuId)}
-                onMouseLeave={() => setHoveredRow(null)}
-                className={`border-b border-slate-100 transition-colors ${
-                  hoveredRow === sku.skuId ? 'bg-slate-50' : ''
-                }`}
+                onMouseEnter={() => setHovered(sku.skuId)}
+                onMouseLeave={() => setHovered(null)}
+                className={`transition-colors ${isHovered ? 'bg-slate-50/80' : ''}`}
               >
-                {/* SKU名称 */}
-                <td className="px-2 py-1.5">
+                {/* SKU 名称 */}
+                <td className={`${TD} sticky left-0 bg-white border-r border-slate-200 ${isHovered ? 'bg-slate-50' : ''}`}>
                   <EditableCell
                     value={sku.name}
                     onChange={(v) => updateSKU(productId, sku.skuId, { name: v as string })}
                     type="text"
-                    className="font-medium text-slate-700"
                   />
                 </td>
 
                 {/* 采购成本 */}
-                <td className="px-2 py-1.5">
-                  <EditableCell
-                    value={sku.purchaseCost}
-                    onChange={(v) => updateSKU(productId, sku.skuId, { purchaseCost: v as number })}
-                    prefix="¥"
-                  />
+                <td className={TD}>
+                  <EditableCell value={sku.purchaseCost} onChange={(v) => updateSKU(productId, sku.skuId, { purchaseCost: v as number })} prefix="¥" />
+                </td>
+                <td className={TD}>
+                  <EditableCell value={sku.domesticShipping} onChange={(v) => updateSKU(productId, sku.skuId, { domesticShipping: v as number })} prefix="¥" />
+                </td>
+                <td className={TD}>
+                  <EditableCell value={sku.packagingFee ?? 0} onChange={(v) => updateSKU(productId, sku.skuId, { packagingFee: v as number })} prefix="¥" />
+                </td>
+                <td className={TD}>
+                  <EditableCell value={sku.weight} onChange={(v) => updateSKU(productId, sku.skuId, { weight: v as number })} suffix="kg" step={0.001} />
                 </td>
 
-                {/* 包装费 */}
-                <td className="px-2 py-1.5">
-                  <EditableCell
-                    value={sku.packagingFee || 0}
-                    onChange={(v) => updateSKU(productId, sku.skuId, { packagingFee: v as number })}
-                    prefix="¥"
-                  />
+                {/* 综合成本 */}
+                <td className={`${TD} border-l border-cyan-100 text-right font-medium text-slate-700`}>
+                  {formatCurrency(c.totalCostMYR)}
                 </td>
 
-                {/* 重量 */}
-                <td className="px-2 py-1.5">
-                  <EditableCell
-                    value={sku.weight}
-                    onChange={(v) => updateSKU(productId, sku.skuId, { weight: v as number })}
-                    suffix="kg"
-                    step={0.001}
-                  />
-                </td>
-
-                {/* 总成本 */}
-                <td className="px-2 py-1.5 text-right text-xs font-medium text-slate-700">
-                  {formatCurrency(sku.calculated.totalCostMYR)}
-                </td>
-
-                {/* 退货率 */}
-                <td className="px-2 py-1.5">
-                  <EditableCell
-                    value={((sku.returnRate ?? 0.05) * 100)}
-                    onChange={(v) => updateSKU(productId, sku.skuId, { returnRate: v as number })}
-                    suffix="%"
-                    isPercent
-                  />
-                </td>
-
-                {/* 定价策略 */}
-                <td className="px-2 py-1.5">
+                {/* 定价 */}
+                <td className={`${TD} border-l border-emerald-100`}>
                   <Select
-                    value={sku.pricingStrategy || 'inherit'}
-                    onValueChange={(v) => setSKUPricingStrategy(productId, sku.skuId, v === 'inherit' ? null : v as PricingStrategy)}
+                    value={sku.pricingStrategy ?? 'inherit'}
+                    onValueChange={(v) =>
+                      setSKUPricingStrategy(productId, sku.skuId, v === 'inherit' ? null : (v as PricingStrategy))
+                    }
                   >
-                    <SelectTrigger className="h-7 text-xs">
+                    <SelectTrigger className="h-6 text-[11px] w-20 border-0 shadow-none px-1 bg-transparent">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -410,128 +262,233 @@ export function SKUTable({ productId, skus }: SKUTableProps) {
                     </SelectContent>
                   </Select>
                 </td>
-
-                {/* 建议售价 */}
-                <td className="px-2 py-1.5 text-right">
-                  <div className="text-xs">
-                    <div className="font-medium text-blue-600">
-                      {formatCurrency(sku.calculated.strategyPrice)}
-                    </div>
-                    <div className="text-[10px] text-slate-400">
-                      {sku.calculated.appliedStrategy.name}
-                    </div>
-                  </div>
+                <td className={`${TD} text-right`}>
+                  <div className="text-[11px] font-medium text-emerald-700">{formatCurrency(c.strategyPrice)}</div>
+                  <div className="text-[9px] text-slate-400">{c.appliedStrategy.name}</div>
                 </td>
-
-                {/* 最终定价 */}
-                <td className="px-2 py-1.5">
+                <td className={TD}>
                   <EditableCell
-                    value={sku.finalPrice ?? sku.calculated.strategyPrice}
+                    value={sku.finalPrice ?? c.strategyPrice}
                     onChange={(v) => updateSKU(productId, sku.skuId, { finalPrice: v as number })}
                     prefix="RM"
-                    className={sku.finalPrice ? 'bg-amber-50 font-medium text-amber-700' : ''}
+                    highlight={!!sku.finalPrice}
                   />
                 </td>
 
-                {/* 平台扣费 */}
-                <td className="px-2 py-1.5 text-right text-xs text-slate-500">
-                  {formatCurrency(sku.calculated.platformFee)}
+                {/* 利润分析 */}
+                <td className={`${TD} border-l border-amber-100 text-right text-slate-500`}>
+                  {formatCurrency(c.platformFee)}
                 </td>
-
-                {/* 实际净利 */}
-                <td className="px-2 py-1.5 text-right">
-                  <span
-                    className="text-xs font-semibold"
-                    style={{ color: getMarginColor(sku.calculated.actualMargin) }}
-                  >
-                    {formatCurrency(sku.calculated.actualNetProfit)}
-                  </span>
+                <td className={`${TD} text-right font-medium`} style={{ color: getMarginColor(c.profitMargin) }}>
+                  {formatCurrency(c.netProfit)}
                 </td>
-
-                {/* 实际利率 */}
-                <td className="px-2 py-1.5 text-right">
-                  <Badge
-                    variant="outline"
-                    className="text-xs"
-                    style={{
-                      borderColor: getMarginColor(sku.calculated.actualMargin),
-                      color: getMarginColor(sku.calculated.actualMargin),
-                      backgroundColor: `${getMarginColor(sku.calculated.actualMargin)}15`,
-                    }}
-                  >
-                    {formatPercent(sku.calculated.actualMargin)}
-                  </Badge>
+                <td className={TD}>
+                  <EditableCell
+                    value={(sku.returnRate ?? 0.05) * 100}
+                    onChange={(v) => updateSKU(productId, sku.skuId, { returnRate: v as number })}
+                    suffix="%"
+                    isPercent
+                  />
                 </td>
-
-                {/* 状态 */}
-                <td className="px-2 py-1.5 text-center">
-                  <Tooltip>
-                    <TooltipTrigger>
-                      {sku.calculated.isProfitable ? (
-                        <CheckCircle2 className="h-4 w-4 text-emerald-500 mx-auto" />
-                      ) : (
-                        <AlertCircle className="h-4 w-4 text-red-500 mx-auto" />
-                      )}
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p className="text-xs">{getMarginStatus(sku.calculated.actualMargin)}</p>
-                    </TooltipContent>
-                  </Tooltip>
+                <td className={`${TD} text-right font-semibold`} style={{ color: marginColor }}>
+                  {formatCurrency(c.actualNetProfit)}
+                </td>
+                <td className={`${TD} text-right`}>
+                  <div className="flex flex-col items-end gap-0.5">
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] h-4 px-1 border-current"
+                      style={{ color: marginColor, borderColor: marginColor, backgroundColor: `${marginColor}18` }}
+                    >
+                      {formatPercent(margin)}
+                    </Badge>
+                    <div className="text-[9px] text-slate-400">{getMarginStatus(margin)}</div>
+                  </div>
                 </td>
 
                 {/* 操作 */}
-                <td className="px-2 py-1.5 text-center">
+                <td className={`${TD} text-center`}>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleDeleteSKU(sku.skuId)}
+                    onClick={() => onDelete(sku.skuId)}
                     disabled={skus.length <= 1}
-                    className="h-6 w-6 p-0 text-slate-400 hover:text-red-500"
+                    className="h-6 w-6 p-0 text-slate-300 hover:text-red-500 hover:bg-red-50"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-3 w-3" />
                   </Button>
                 </td>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            );
+          })}
+        </tbody>
+      </table>
 
-        {/* 添加SKU按钮 */}
-        <div className="p-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleAddSKU}
-            className="w-full h-8 text-xs border-dashed border-slate-300 text-slate-600 hover:bg-slate-50 hover:border-slate-400"
+      {/* Add SKU footer */}
+      <div className="px-3 py-2 bg-slate-50 border-t border-slate-100">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={onAdd}
+          className="h-7 text-xs border-dashed text-slate-500 hover:text-slate-700"
+        >
+          <Plus className="h-3.5 w-3.5 mr-1" />
+          添加 SKU
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Mobile card ──────────────────────────────────────────────────────────────
+
+function MobileCard({ sku, productId, onDelete }: { sku: SKUData; productId: string; onDelete: () => void }) {
+  const { updateSKU, setSKUPricingStrategy } = useStore();
+  const c = sku.calculated;
+  const marginColor = getMarginColor(c.actualMargin);
+
+  return (
+    <div className="border border-slate-200 rounded-lg bg-white overflow-hidden">
+      {/* Top bar */}
+      <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-slate-200">
+        <div className="flex-1 min-w-0">
+          <EditableCell
+            value={sku.name || '—'}
+            onChange={(v) => updateSKU(productId, sku.skuId, { name: v as string })}
+            type="text"
+          />
+        </div>
+        <div className="flex items-center gap-2 ml-2">
+          <Select
+            value={sku.pricingStrategy ?? 'inherit'}
+            onValueChange={(v) =>
+              setSKUPricingStrategy(productId, sku.skuId, v === 'inherit' ? null : (v as PricingStrategy))
+            }
           >
-            <Plus className="h-3.5 w-3.5 mr-1" />
-            添加 SKU
+            <SelectTrigger className="h-6 w-20 text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="inherit">默认</SelectItem>
+              {PRICING_STRATEGIES.map((s) => (
+                <SelectItem key={s.key} value={s.key}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button variant="ghost" size="sm" onClick={onDelete} className="h-6 w-6 p-0 text-slate-300 hover:text-red-500">
+            <Trash2 className="h-3 w-3" />
           </Button>
         </div>
       </div>
 
-      {/* 移动端卡片列表 */}
-      <div className="md:hidden space-y-3">
+      {/* Cost row */}
+      <div className="grid grid-cols-4 gap-px bg-slate-100 border-b border-slate-200">
+        {[
+          { label: '采购¥', node: <EditableCell value={sku.purchaseCost} onChange={(v) => updateSKU(productId, sku.skuId, { purchaseCost: v as number })} prefix="¥" /> },
+          { label: '国运¥', node: <EditableCell value={sku.domesticShipping} onChange={(v) => updateSKU(productId, sku.skuId, { domesticShipping: v as number })} prefix="¥" /> },
+          { label: '包装¥', node: <EditableCell value={sku.packagingFee ?? 0} onChange={(v) => updateSKU(productId, sku.skuId, { packagingFee: v as number })} prefix="¥" /> },
+          { label: '重量', node: <EditableCell value={sku.weight} onChange={(v) => updateSKU(productId, sku.skuId, { weight: v as number })} suffix="kg" step={0.001} /> },
+        ].map(({ label, node }) => (
+          <div key={label} className="bg-white px-2 py-1.5">
+            <div className="text-[10px] text-slate-400 mb-0.5">{label}</div>
+            {node}
+          </div>
+        ))}
+      </div>
+
+      {/* Pricing + profit */}
+      <div className="grid grid-cols-2 gap-px bg-slate-100">
+        <div className="bg-white px-3 py-2">
+          <div className="text-[10px] text-slate-400 mb-1">总成本 / 建议价</div>
+          <div className="text-xs text-slate-600">{formatCurrency(c.totalCostMYR)} / <span className="text-emerald-600 font-medium">{formatCurrency(c.strategyPrice)}</span></div>
+          <div className="mt-1">
+            <EditableCell
+              value={sku.finalPrice ?? c.strategyPrice}
+              onChange={(v) => updateSKU(productId, sku.skuId, { finalPrice: v as number })}
+              prefix="RM"
+              highlight={!!sku.finalPrice}
+            />
+            <div className="text-[9px] text-slate-400 mt-0.5">最终定价（点击编辑）</div>
+          </div>
+        </div>
+        <div className="bg-white px-3 py-2">
+          <div className="text-[10px] text-slate-400 mb-1 flex items-center gap-1">
+            <TrendingUp className="h-3 w-3" /> 利润分析
+          </div>
+          <div className="text-sm font-bold" style={{ color: marginColor }}>
+            {formatCurrency(c.actualNetProfit)}
+          </div>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <Badge
+              variant="outline"
+              className="text-[10px] h-4 px-1"
+              style={{ color: marginColor, borderColor: marginColor }}
+            >
+              {formatPercent(c.actualMargin)}
+            </Badge>
+            <EditableCell
+              value={(sku.returnRate ?? 0.05) * 100}
+              onChange={(v) => updateSKU(productId, sku.skuId, { returnRate: v as number })}
+              suffix="% 退货"
+              isPercent
+            />
+          </div>
+          <div className="mt-1 flex items-center gap-1">
+            {c.isProfitable ? (
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+            ) : (
+              <AlertCircle className="h-3.5 w-3.5 text-red-500" />
+            )}
+            <span className="text-[10px] text-slate-500">{getMarginStatus(c.actualMargin)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── SKUTable ─────────────────────────────────────────────────────────────────
+
+export function SKUTable({ productId, skus }: SKUTableProps) {
+  const { addSKU, deleteSKU } = useStore();
+
+  const handleDelete = (skuId: string) => {
+    if (skus.length <= 1) return;
+    deleteSKU(productId, skuId);
+  };
+
+  return (
+    <>
+      {/* Desktop */}
+      <div className="hidden md:block">
+        <DesktopTable
+          productId={productId}
+          skus={skus}
+          onDelete={handleDelete}
+          onAdd={() => addSKU(productId, true)}
+        />
+      </div>
+
+      {/* Mobile */}
+      <div className="md:hidden space-y-2 p-3">
         {skus.map((sku) => (
-          <SKUMobileCard
+          <MobileCard
             key={sku.skuId}
             sku={sku}
             productId={productId}
-            onDelete={() => handleDeleteSKU(sku.skuId)}
+            onDelete={() => handleDelete(sku.skuId)}
           />
         ))}
-        
-        {/* 添加SKU按钮 */}
         <Button
           variant="outline"
           size="sm"
-          onClick={handleAddSKU}
-          className="w-full h-10 text-sm border-dashed border-slate-300 text-slate-600 hover:bg-slate-50"
+          onClick={() => addSKU(productId, true)}
+          className="w-full h-9 border-dashed text-slate-500"
         >
-          <Plus className="h-4 w-4 mr-2" />
+          <Plus className="h-4 w-4 mr-1.5" />
           添加 SKU
         </Button>
       </div>
-    </TooltipProvider>
+    </>
   );
 }

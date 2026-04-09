@@ -4,17 +4,21 @@
 
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Header } from '@/components/Header';
 import { SummaryCards } from '@/components/SummaryCards';
 import { ProductCard } from '@/components/ProductCard';
 import { GlobalParamsPanel } from '@/components/GlobalParamsPanel';
 import { AddProductDialog } from '@/components/AddProductDialog';
-import { useStore, useSummaryStats } from '@/store/useStore';
+import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
+import { useStore, useCalculatedProducts, useSummaryStats } from '@/store/useStore';
 
 export default function Home() {
-  const { products, loadData, isLoading, error } = useStore();
+  const { loadData, isLoading, error, lastSaved } = useStore();
+  const products = useCalculatedProducts();
   const summaryStats = useSummaryStats();
+  const [addProductOpen, setAddProductOpen] = useState(false);
+  const [mobileParamsOpen, setMobileParamsOpen] = useState(false);
 
   // 初始加载数据
   useEffect(() => {
@@ -50,33 +54,37 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
-      
+      <Header
+        lastSaved={lastSaved}
+        onAddProduct={() => setAddProductOpen(true)}
+        onOpenParams={() => setMobileParamsOpen(true)}
+      />
+
       <main className="container mx-auto px-4 py-6 max-w-7xl">
         <SummaryCards stats={summaryStats} />
-        
-        <div className="mt-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* 全局参数面板 */}
-          <div className="lg:col-span-1">
-            <GlobalParamsPanel />
-          </div>
-          
-          {/* 商品列表 */}
-          <div className="lg:col-span-3 space-y-4">
-            {products.length === 0 ? (
-              <div className="text-center py-12 bg-white rounded-lg shadow">
-                <p className="text-gray-500">暂无商品，点击上方按钮添加</p>
-              </div>
-            ) : (
-              products.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))
-            )}
-          </div>
+
+        <div className="mt-4 space-y-3">
+          {products.length === 0 ? (
+            <div className="text-center py-16 bg-white rounded-lg border border-slate-200">
+              <p className="text-slate-400 text-sm">暂无商品，点击右上角「添加商品」开始</p>
+            </div>
+          ) : (
+            products.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))
+          )}
         </div>
       </main>
-      
-      <AddProductDialog />
+
+      {/* 全局参数面板 (Sheet) */}
+      <Sheet open={mobileParamsOpen} onOpenChange={setMobileParamsOpen}>
+        <SheetContent side="right" className="w-80 p-0 flex flex-col">
+          <SheetTitle className="sr-only">全局参数配置</SheetTitle>
+          <GlobalParamsPanel />
+        </SheetContent>
+      </Sheet>
+
+      <AddProductDialog open={addProductOpen} onOpenChange={setAddProductOpen} />
     </div>
   );
 }

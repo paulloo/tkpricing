@@ -33,9 +33,9 @@ export function AddProductDialog({ open, onOpenChange }: AddProductDialogProps) 
     if (!name.trim()) return;
 
     setIsSubmitting(true);
-    
+
     // 添加商品
-    addProduct(name.trim(), url.trim());
+    await addProduct(name.trim(), url.trim());
     
     // 重置表单
     setName('');

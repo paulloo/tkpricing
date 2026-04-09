@@ -50,7 +50,7 @@ function mapProductFromDB(dbProduct: {
     displayOrder: dbProduct.displayOrder,
     variants: dbProduct.variants.map((v) => ({
       skuId: v.id,
-      skuName: v.skuName,
+      name: v.skuName,
       skuCode: v.skuCode || undefined,
       purchaseCost: Number(v.purchaseCost),
       domesticShipping: Number(v.domesticShipping),
@@ -63,6 +63,7 @@ function mapProductFromDB(dbProduct: {
   };
 }
 
+// 只返回 DB 中实际存储的字段，不覆盖本地字段
 function mapConfigFromDB(dbConfig: {
   exchangeRate: number;
   shippingRate: number;
@@ -74,7 +75,7 @@ function mapConfigFromDB(dbConfig: {
   targetProfitMargin: number;
   pricingStrategy: string;
   customMultiplier: number | null;
-}): GlobalParams {
+}): Partial<GlobalParams> {
   return {
     exchangeRate: Number(dbConfig.exchangeRate),
     shippingRate: Number(dbConfig.shippingRate),
@@ -82,16 +83,12 @@ function mapConfigFromDB(dbConfig: {
     minHandlingFee: Number(dbConfig.minOperationFee),
     lastMileFee: Number(dbConfig.lastMileFee),
     commissionRate: Number(dbConfig.platformFeeRate),
-    transactionFee: 0,
-    lvgTaxRate: 0,
-    marketingRate: 0,
-    sfpFee: 0,
-    affiliateRate: 0,
-    adsRate: 0,
     returnRate: Number(dbConfig.returnRate),
-    targetProfitMargin: Number(dbConfig.targetProfitMargin),
+    targetProfitRate: Number(dbConfig.targetProfitMargin),
     pricingStrategy: dbConfig.pricingStrategy as PricingStrategy,
-    customMultiplier: dbConfig.customMultiplier !== null ? Number(dbConfig.customMultiplier) : undefined,
+    ...(dbConfig.customMultiplier !== null && { customMultiplier: Number(dbConfig.customMultiplier) }),
+    // transactionFee / lvgTaxRate / marketingRate / sfpFee / affiliateRate / adsRate / returnLossRate
+    // 不在 DB schema 中，保留本地状态
   };
 }
 
@@ -190,7 +187,10 @@ export const useStore = create<StoreState>()((set, get) => ({
       }>> = await productsRes.json();
 
       set({
-        globalParams: configData.data ? mapConfigFromDB(configData.data) : createDefaultGlobalParams(),
+        // 以默认值为基础，将 DB 中的字段覆盖进来，保留本地字段的默认值
+        globalParams: configData.data
+          ? { ...createDefaultGlobalParams(), ...mapConfigFromDB(configData.data) }
+          : createDefaultGlobalParams(),
         products: productsData.data ? productsData.data.map(mapProductFromDB) : [],
         lastSaved: new Date().toISOString(),
         isLoading: false,
@@ -206,29 +206,37 @@ export const useStore = create<StoreState>()((set, get) => ({
   // ============ 全局参数操作 ============
 
   setGlobalParams: async (params) => {
+    // 1. 乐观更新：立即反映到界面
+    set((state) => ({
+      globalParams: { ...state.globalParams, ...params },
+    }));
+
+    // 2. 构造 DB payload（只发送 DB 支持的字段）
+    const mapToDB: Record<string, string> = {
+      handlingFee: 'labelFee',
+      minHandlingFee: 'minOperationFee',
+      commissionRate: 'platformFeeRate',
+      targetProfitRate: 'targetProfitMargin',
+    };
+    const skipFields = new Set([
+      'returnLossRate', 'transactionFee', 'lvgTaxRate',
+      'marketingRate', 'sfpFee', 'affiliateRate', 'adsRate',
+    ]);
+
+    const dbPayload: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(params)) {
+      if (skipFields.has(key)) continue;
+      dbPayload[mapToDB[key] ?? key] = value;
+    }
+
+    // 3. 纯本地字段则不需要请求 API
+    if (Object.keys(dbPayload).length === 0) return;
+
     try {
-      // 前端字段名 -> 数据库字段名映射
-      const mapToDB: Record<string, string> = {
-        handlingFee: 'labelFee',
-        minHandlingFee: 'minOperationFee',
-        commissionRate: 'platformFeeRate',
-      };
-      
-      const dbParams: Record<string, number | string> = {};
-      for (const [key, value] of Object.entries(params)) {
-        const dbKey = mapToDB[key] || key;
-        // commissionRate 是百分比，需要转换为小数存储
-        if (key === 'commissionRate' && typeof value === 'number') {
-          dbParams[dbKey] = value / 100;
-        } else {
-          dbParams[dbKey] = value;
-        }
-      }
-      
       const res = await fetch('/api/config', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(dbParams),
+        body: JSON.stringify(dbPayload),
       });
 
       if (!res.ok) throw new Error('更新配置失败');
@@ -247,10 +255,11 @@ export const useStore = create<StoreState>()((set, get) => ({
       }> = await res.json();
 
       if (data.data) {
-        set({
-          globalParams: mapConfigFromDB(data.data),
+        // 合并 DB 响应，保留本地字段（不替换整个 globalParams）
+        set((state) => ({
+          globalParams: { ...state.globalParams, ...mapConfigFromDB(data.data!) },
           lastSaved: new Date().toISOString(),
-        });
+        }));
       }
     } catch (err) {
       set({ error: err instanceof Error ? err.message : '更新配置失败' });
@@ -277,7 +286,7 @@ export const useStore = create<StoreState>()((set, get) => ({
 
       if (data.data) {
         set({
-          globalParams: mapConfigFromDB(data.data),
+          globalParams: { ...createDefaultGlobalParams(), ...mapConfigFromDB(data.data) },
           lastSaved: new Date().toISOString(),
         });
       }
@@ -452,7 +461,7 @@ export const useStore = create<StoreState>()((set, get) => ({
       if (!product) return;
 
       let newSKUData: Partial<SKUVariant> = {
-        skuName: '',
+        name: '',
         purchaseCost: 0,
         domesticShipping: 0,
         packagingFee: 0,
@@ -463,7 +472,7 @@ export const useStore = create<StoreState>()((set, get) => ({
       if (copyFromLast && product.variants.length > 0) {
         const lastSKU = product.variants[product.variants.length - 1];
         newSKUData = {
-          skuName: '',
+          name: '',
           weight: lastSKU.weight,
           purchaseCost: lastSKU.purchaseCost,
           domesticShipping: lastSKU.domesticShipping,
@@ -471,12 +480,14 @@ export const useStore = create<StoreState>()((set, get) => ({
         };
       }
 
+      const { name: skuName, ...restSKUData } = newSKUData;
       const res = await fetch('/api/skus', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           productId,
-          ...newSKUData,
+          skuName: skuName ?? '',
+          ...restSKUData,
         }),
       });
 
@@ -498,7 +509,7 @@ export const useStore = create<StoreState>()((set, get) => ({
       if (data.data) {
         const newSKU: SKUVariant = {
           skuId: data.data.id,
-          skuName: data.data.skuName,
+          name: data.data.skuName,
           skuCode: data.data.skuCode || undefined,
           purchaseCost: Number(data.data.purchaseCost),
           domesticShipping: Number(data.data.domesticShipping),
@@ -525,10 +536,16 @@ export const useStore = create<StoreState>()((set, get) => ({
 
   updateSKU: async (productId, skuId, updates) => {
     try {
+      // Translate frontend field names to DB field names
+      const { name, ...restUpdates } = updates;
+      const apiBody = {
+        ...(name !== undefined && { skuName: name }),
+        ...restUpdates,
+      };
       const res = await fetch(`/api/skus/${skuId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates),
+        body: JSON.stringify(apiBody),
       });
 
       if (!res.ok) throw new Error('更新 SKU 失败');
