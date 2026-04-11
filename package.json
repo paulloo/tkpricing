@@ -1,7 +1,6 @@
 {
-  "name": "my-app",
-  "private": true,
-  "version": "0.0.0",
+  "name": "tkpricing",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "next dev",

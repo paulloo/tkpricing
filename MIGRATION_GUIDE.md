@@ -62,18 +62,18 @@ DATABASE_URL="postgresql://postgres:postgres@localhost:5432/tk_pricing?schema=pu
 
 ```bash
 # 生成 Prisma Client
-npm run db:generate
+pnpm db:generate
 
 # 创建并应用迁移
-npm run db:migrate
+pnpm db:migrate
 # 或快速推送（开发环境）
-npm run db:push
+pnpm db:push
 ```
 
 ### 4. 启动开发服务器
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
 访问 http://localhost:3000
@@ -99,13 +99,13 @@ npm run dev
 
 ```bash
 # 开发环境 - 创建新迁移
-npm run db:migrate -- --name add_user_table
+pnpm db:migrate -- --name add_user_table
 
 # 生产环境 - 应用迁移
 npx prisma migrate deploy
 
 # 查看数据库
-npm run db:studio
+pnpm db:studio
 ```
 
 ## 数据迁移（从 localStorage）
@@ -119,7 +119,7 @@ npm run db:studio
 ### Vercel
 
 ```bash
-npm i -g vercel
+pnpm add -g vercel
 vercel --prod
 ```
 
@@ -129,7 +129,7 @@ vercel --prod
 
 ```bash
 # 构建
-npm run build
+pnpm build
 
 # 启动生产服务器
 npm start
@@ -151,14 +151,14 @@ pg_isready -h localhost -p 5432
 ### 2. Prisma Client 未生成
 
 ```bash
-npm run db:generate
+pnpm db:generate
 ```
 
 ### 3. 端口冲突
 
 Next.js 默认使用 3000 端口，如果被占用：
 ```bash
-npm run dev -- --port 3001
+pnpm dev -- --port 3001
 ```
 
 ## 回滚到 Vite 版本
