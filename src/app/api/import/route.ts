@@ -49,20 +49,42 @@ export async function POST(request: NextRequest) {
               name: p.name || '',
               url: p.url,
               description: p.description,
+              imageUrl: p.imageUrl,
               isExpanded: p.isExpanded ?? true,
               displayOrder: i,
               variants: {
-                create: p.variants?.map((v: unknown) => ({
-                  skuName: (v as { skuName?: string }).skuName || '',
-                  skuCode: (v as { skuCode?: string }).skuCode,
-                  purchaseCost: (v as { purchaseCost?: number }).purchaseCost || 0,
-                  domesticShipping: (v as { domesticShipping?: number }).domesticShipping || 0,
-                  packagingFee: (v as { packagingFee?: number }).packagingFee || 0,
-                  weight: (v as { weight?: number }).weight || 0,
-                  returnRate: (v as { returnRate?: number }).returnRate,
-                  pricingStrategy: (v as { pricingStrategy?: string }).pricingStrategy,
-                  customMultiplier: (v as { customMultiplier?: number }).customMultiplier,
-                })) || [],
+                create: p.variants?.map((v: unknown) => {
+                  const sku = v as {
+                    skuName?: string;
+                    skuCode?: string;
+                    tiktokSkuId?: string;
+                    imageUrl?: string;
+                    purchaseCost?: number;
+                    domesticShipping?: number;
+                    packagingFee?: number;
+                    weight?: number;
+                    currentPrice?: number;
+                    inventory?: number;
+                    returnRate?: number;
+                    pricingStrategy?: string;
+                    customMultiplier?: number;
+                  };
+                  return {
+                    skuName: sku.skuName || '',
+                    skuCode: sku.skuCode,
+                    tiktokSkuId: sku.tiktokSkuId,
+                    imageUrl: sku.imageUrl,
+                    purchaseCost: sku.purchaseCost || 0,
+                    domesticShipping: sku.domesticShipping || 0,
+                    packagingFee: sku.packagingFee || 0,
+                    weight: sku.weight || 0,
+                    currentPrice: sku.currentPrice,
+                    inventory: sku.inventory,
+                    returnRate: sku.returnRate,
+                    pricingStrategy: sku.pricingStrategy,
+                    customMultiplier: sku.customMultiplier,
+                  };
+                }) || [],
               },
             },
             include: {

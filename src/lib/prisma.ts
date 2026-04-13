@@ -3,12 +3,14 @@
 
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
-import { Pool } from 'pg';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { Pool } = require('pg');
 
 const globalForPrisma = global as unknown as { prisma: PrismaClient };
 
 const prismaClientSingleton = () => {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL }) as any;
   const adapter = new PrismaPg(pool);
   return new PrismaClient({ adapter });
 };

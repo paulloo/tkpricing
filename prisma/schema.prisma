@@ -51,6 +51,7 @@ model Product {
   name        String  @default("") @db.VarChar(255)
   url         String? @db.Text
   description String? @db.Text
+  imageUrl    String? @map("image_url") @db.Text
   
   // UI 状态
   isExpanded   Boolean @default(true) @map("is_expanded")
@@ -82,8 +83,12 @@ model SKU {
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   
   // SKU 信息
-  skuName String @default("") @map("sku_name") @db.VarChar(255)
-  skuCode String? @map("sku_code") @db.VarChar(100)
+  skuName     String  @default("") @map("sku_name") @db.VarChar(255)
+  skuCode     String? @map("sku_code") @db.VarChar(100)
+  tiktokSkuId String? @map("tiktok_sku_id") @db.VarChar(50)
+  imageUrl    String? @map("image_url") @db.Text
+  currentPrice Decimal? @map("current_price") @db.Decimal(10, 2)
+  inventory   Int?    @map("inventory")
   
   // 成本 (RMB)
   purchaseCost     Decimal @default(0) @map("purchase_cost") @db.Decimal(10, 2)

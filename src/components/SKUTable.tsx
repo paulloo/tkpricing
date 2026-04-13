@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Trash2, Plus, AlertCircle, CheckCircle2, TrendingUp } from 'lucide-react';
+import { Trash2, Plus, AlertCircle, CheckCircle2, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import {
   formatCurrency,
   formatPercent,
@@ -141,6 +141,39 @@ const GRP = {
 const TH = 'px-2 py-1 text-[10px] font-medium text-slate-500 border-b border-slate-200 whitespace-nowrap bg-slate-50';
 const TD = 'px-2 py-1 border-b border-slate-100 align-middle';
 
+// ─── Current Price Cell ───────────────────────────────────────────────────────
+
+function CurrentPriceCell({ currentPrice, strategyPrice }: { currentPrice: number; strategyPrice: number }) {
+  const diff = currentPrice - strategyPrice;
+  const pct = strategyPrice > 0 ? diff / strategyPrice : 0;
+
+  let Icon = Minus;
+  let color = 'text-slate-400';
+  let bgColor = 'bg-slate-50';
+
+  if (pct > 0.02) {
+    Icon = TrendingUp;
+    color = 'text-emerald-600';
+    bgColor = 'bg-emerald-50';
+  } else if (pct < -0.02) {
+    Icon = TrendingDown;
+    color = 'text-red-500';
+    bgColor = 'bg-red-50';
+  }
+
+  return (
+    <div className={`inline-flex flex-col items-end gap-0.5 rounded px-1 py-0.5 ${bgColor}`}>
+      <div className={`flex items-center gap-0.5 text-[11px] font-medium ${color}`}>
+        <Icon className="h-3 w-3" />
+        <span>RM{currentPrice.toFixed(2)}</span>
+      </div>
+      <div className={`text-[9px] ${color} opacity-80`}>
+        {pct >= 0 ? '+' : ''}{(pct * 100).toFixed(1)}%
+      </div>
+    </div>
+  );
+}
+
 // ─── Desktop table ────────────────────────────────────────────────────────────
 
 function DesktopTable({ productId, skus, onDelete, onAdd }: {
@@ -167,7 +200,7 @@ function DesktopTable({ productId, skus, onDelete, onAdd }: {
             <th colSpan={1} className={`${GRP.logistics} text-center text-[10px] font-semibold px-2 py-0.5 border-b border-x`}>
               综合成本
             </th>
-            <th colSpan={3} className={`${GRP.pricing} text-center text-[10px] font-semibold px-2 py-0.5 border-b border-x`}>
+            <th colSpan={4} className={`${GRP.pricing} text-center text-[10px] font-semibold px-2 py-0.5 border-b border-x`}>
               定价策略
             </th>
             <th colSpan={5} className={`${GRP.profit} text-center text-[10px] font-semibold px-2 py-0.5 border-b border-x`}>
@@ -190,6 +223,7 @@ function DesktopTable({ productId, skus, onDelete, onAdd }: {
             <th className={`${TH} text-center border-l border-emerald-100`}>策略</th>
             <th className={`${TH} text-right`}>建议价</th>
             <th className={`${TH} text-right`}>最终价↓</th>
+            <th className={`${TH} text-right`}>当前售价</th>
             {/* 利润 */}
             <th className={`${TH} text-right border-l border-amber-100`}>平台扣</th>
             <th className={`${TH} text-right`}>净利润</th>
@@ -273,6 +307,15 @@ function DesktopTable({ productId, skus, onDelete, onAdd }: {
                     prefix="RM"
                     highlight={!!sku.finalPrice}
                   />
+                </td>
+
+                {/* 当前售价对比 */}
+                <td className={`${TD} text-right`}>
+                  {sku.currentPrice != null ? (
+                    <CurrentPriceCell currentPrice={sku.currentPrice} strategyPrice={c.strategyPrice} />
+                  ) : (
+                    <span className="text-[10px] text-slate-300">—</span>
+                  )}
                 </td>
 
                 {/* 利润分析 */}

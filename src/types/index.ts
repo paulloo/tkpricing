@@ -51,19 +51,27 @@ export interface GlobalParams {
 export interface SKUVariant {
   skuId: string;               // SKU ID
   name: string;                // SKU名称
-  
+
   // 采购与产品成本
   purchaseCost: number;        // 采购单价(RMB)
   domesticShipping: number;    // 国内段运费(RMB)
   packagingFee: number;        // 包装费/贴标费(RMB)
-  
+
   // 物流
   weight: number;              // 重量(kg)
-  
+
   // 其他
   returnRate: number | null;   // 退货率(%), null表示使用全局默认值
   finalPrice: number | null;   // 最终定价(MYR), null表示使用建议售价
   pricingStrategy: PricingStrategy | null; // SKU级定价策略
+
+  customMultiplier?: number;   // 自定义倍数（策略为 custom 时使用）
+
+  // 妙手同步字段
+  tiktokSkuId?: string;        // TikTok Shop 原始 SKU ID
+  currentPrice?: number;       // 当前在售价(MYR)，来自妙手导出
+  inventory?: number;          // 库存数量
+  imageUrl?: string;           // SKU 图片 URL
 }
 
 // SKU 计算结果
@@ -122,10 +130,11 @@ export interface Product {
   id: string;                  // 商品ID
   name: string;                // 商品名称
   url: string;                 // 商品链接
-  createdAt: string;           // 创建时间
-  note: string;                // 备注
+  createdAt?: string;          // 创建时间
+  note?: string;               // 备注
   isExpanded: boolean;         // 是否展开
   variants: SKUVariant[];      // SKU变体列表
+  imageUrl?: string;           // 商品主图 URL（来自妙手）
 }
 
 // 完整的商品数据（包含计算后的SKU）

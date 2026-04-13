@@ -20,22 +20,53 @@ interface ApiResponse<T> {
   error?: string;
 }
 
+// 导入载荷类型（直接对应 /api/import 接受的 JSON 结构）
+export interface ImportSKUPayload {
+  skuName: string;
+  skuCode?: string;
+  tiktokSkuId?: string;
+  imageUrl?: string;
+  purchaseCost: number;
+  domesticShipping: number;
+  packagingFee: number;
+  weight: number;
+  currentPrice?: number;
+  inventory?: number;
+  returnRate?: number;
+  pricingStrategy?: string;
+  customMultiplier?: number;
+}
+
+export interface ImportProductPayload {
+  name: string;
+  url?: string;
+  description?: string;
+  imageUrl?: string;
+  isExpanded?: boolean;
+  variants: ImportSKUPayload[];
+}
+
 // Prisma 模型转前端类型
 function mapProductFromDB(dbProduct: {
   id: string;
   name: string;
   url: string | null;
   description: string | null;
+  imageUrl?: string | null;
   isExpanded: boolean;
   displayOrder: number;
   variants: Array<{
     id: string;
     skuName: string;
     skuCode: string | null;
+    tiktokSkuId?: string | null;
+    imageUrl?: string | null;
     purchaseCost: number;
     domesticShipping: number;
     packagingFee: number;
     weight: number;
+    currentPrice?: number | null;
+    inventory?: number | null;
     returnRate: number | null;
     pricingStrategy: string | null;
     customMultiplier: number | null;
@@ -45,19 +76,22 @@ function mapProductFromDB(dbProduct: {
     id: dbProduct.id,
     name: dbProduct.name,
     url: dbProduct.url || '',
-    description: dbProduct.description || '',
+    imageUrl: dbProduct.imageUrl || undefined,
     isExpanded: dbProduct.isExpanded,
-    displayOrder: dbProduct.displayOrder,
     variants: dbProduct.variants.map((v) => ({
       skuId: v.id,
       name: v.skuName,
-      skuCode: v.skuCode || undefined,
+      tiktokSkuId: v.tiktokSkuId || undefined,
+      imageUrl: v.imageUrl || undefined,
       purchaseCost: Number(v.purchaseCost),
       domesticShipping: Number(v.domesticShipping),
       packagingFee: Number(v.packagingFee),
       weight: Number(v.weight),
-      returnRate: v.returnRate !== null ? Number(v.returnRate) : undefined,
-      pricingStrategy: (v.pricingStrategy as PricingStrategy) || undefined,
+      currentPrice: v.currentPrice != null ? Number(v.currentPrice) : undefined,
+      inventory: v.inventory != null ? v.inventory : undefined,
+      returnRate: v.returnRate !== null ? Number(v.returnRate) : null,
+      finalPrice: null,
+      pricingStrategy: (v.pricingStrategy as PricingStrategy) || null,
       customMultiplier: v.customMultiplier !== null ? Number(v.customMultiplier) : undefined,
     })),
   };
@@ -123,7 +157,7 @@ interface StoreState {
 
   // 数据管理
   loadData: () => Promise<void>;
-  importData: (data: { globalParams?: GlobalParams; products?: Product[] }) => Promise<void>;
+  importData: (data: { globalParams?: GlobalParams; products?: ImportProductPayload[] | Product[] }) => Promise<void>;
   exportData: () => { globalParams: GlobalParams; products: Product[] };
   clearAllData: () => Promise<void>;
 }
@@ -170,16 +204,21 @@ export const useStore = create<StoreState>()((set, get) => ({
         name: string;
         url: string | null;
         description: string | null;
+        imageUrl?: string | null;
         isExpanded: boolean;
         displayOrder: number;
         variants: Array<{
           id: string;
           skuName: string;
           skuCode: string | null;
+          tiktokSkuId?: string | null;
+          imageUrl?: string | null;
           purchaseCost: number;
           domesticShipping: number;
           packagingFee: number;
           weight: number;
+          currentPrice?: number | null;
+          inventory?: number | null;
           returnRate: number | null;
           pricingStrategy: string | null;
           customMultiplier: number | null;
@@ -510,13 +549,13 @@ export const useStore = create<StoreState>()((set, get) => ({
         const newSKU: SKUVariant = {
           skuId: data.data.id,
           name: data.data.skuName,
-          skuCode: data.data.skuCode || undefined,
           purchaseCost: Number(data.data.purchaseCost),
           domesticShipping: Number(data.data.domesticShipping),
           packagingFee: Number(data.data.packagingFee),
           weight: Number(data.data.weight),
-          returnRate: data.data.returnRate !== null ? Number(data.data.returnRate) : undefined,
-          pricingStrategy: (data.data.pricingStrategy as PricingStrategy) || undefined,
+          returnRate: data.data.returnRate !== null ? Number(data.data.returnRate) : null,
+          finalPrice: null,
+          pricingStrategy: (data.data.pricingStrategy as PricingStrategy) || null,
           customMultiplier: data.data.customMultiplier !== null ? Number(data.data.customMultiplier) : undefined,
         };
 
@@ -610,7 +649,7 @@ export const useStore = create<StoreState>()((set, get) => ({
 
   // ============ 数据导入导出 ============
 
-  importData: async (data) => {
+  importData: async (data: { globalParams?: GlobalParams; products?: ImportProductPayload[] | Product[] }) => {
     try {
       const res = await fetch('/api/import', {
         method: 'POST',

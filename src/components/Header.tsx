@@ -21,19 +21,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { 
-  Plus, 
-  ChevronDown, 
-  ChevronUp, 
-  Download, 
-  Upload, 
-  Trash2, 
+import {
+  Plus,
+  ChevronDown,
+  ChevronUp,
+  Download,
+  Upload,
+  Trash2,
   FileSpreadsheet,
   Save,
   MoreHorizontal,
   Calculator,
-  Settings2
+  Settings2,
+  ShoppingBag
 } from 'lucide-react';
+import { MiaoshouImportDialog } from '@/components/MiaoshouImportDialog';
 
 interface HeaderProps {
   lastSaved: string | null;
@@ -53,6 +55,7 @@ export function Header({ lastSaved, onAddProduct, onOpenParams }: HeaderProps) {
   
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [importText, setImportText] = useState('');
+  const [miaoshouDialogOpen, setMiaoshouDialogOpen] = useState(false);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const [confirmText, setConfirmText] = useState('');
 
@@ -228,9 +231,13 @@ export function Header({ lastSaved, onAddProduct, onOpenParams }: HeaderProps) {
                   <Download className="h-4 w-4 mr-2" />
                   备份数据
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setMiaoshouDialogOpen(true)}>
+                  <ShoppingBag className="h-4 w-4 mr-2" />
+                  导入妙手
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setImportDialogOpen(true)}>
                   <Upload className="h-4 w-4 mr-2" />
-                  导入数据
+                  导入备份
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem 
@@ -271,6 +278,12 @@ export function Header({ lastSaved, onAddProduct, onOpenParams }: HeaderProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* 妙手导入对话框 */}
+      <MiaoshouImportDialog
+        open={miaoshouDialogOpen}
+        onOpenChange={setMiaoshouDialogOpen}
+      />
 
       {/* 清空数据确认对话框 */}
       <Dialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
