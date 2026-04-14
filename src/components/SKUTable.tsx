@@ -108,7 +108,7 @@ function EditableCell({
   const display =
     type === 'number' && typeof value === 'number'
       ? isPercent
-        ? formatPercent(value)
+        ? `${value.toFixed(1)}%`   // value 已是百分数形式（如 5），直接加 %
         : value % 1 === 0
         ? value.toFixed(0)
         : value.toFixed(2)
@@ -249,11 +249,22 @@ function DesktopTable({ productId, skus, onDelete, onAdd }: {
               >
                 {/* SKU 名称 */}
                 <td className={`${TD} sticky left-0 bg-white border-r border-slate-200 ${isHovered ? 'bg-slate-50' : ''}`}>
-                  <EditableCell
-                    value={sku.name}
-                    onChange={(v) => updateSKU(productId, sku.skuId, { name: v as string })}
-                    type="text"
-                  />
+                  <div className="flex items-center gap-1.5">
+                    {sku.imageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={sku.imageUrl}
+                        alt=""
+                        loading="lazy"
+                        className="w-7 h-7 rounded object-cover shrink-0 border border-slate-100"
+                      />
+                    ) : null}
+                    <EditableCell
+                      value={sku.name}
+                      onChange={(v) => updateSKU(productId, sku.skuId, { name: v as string })}
+                      type="text"
+                    />
+                  </div>
                 </td>
 
                 {/* 采购成本 */}
@@ -394,12 +405,23 @@ function MobileCard({ sku, productId, onDelete }: { sku: SKUData; productId: str
     <div className="border border-slate-200 rounded-lg bg-white overflow-hidden">
       {/* Top bar */}
       <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b border-slate-200">
-        <div className="flex-1 min-w-0">
-          <EditableCell
-            value={sku.name || '—'}
-            onChange={(v) => updateSKU(productId, sku.skuId, { name: v as string })}
-            type="text"
-          />
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          {sku.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={sku.imageUrl}
+              alt=""
+              loading="lazy"
+              className="w-8 h-8 rounded object-cover shrink-0 border border-slate-200"
+            />
+          ) : null}
+          <div className="flex-1 min-w-0">
+            <EditableCell
+              value={sku.name || '—'}
+              onChange={(v) => updateSKU(productId, sku.skuId, { name: v as string })}
+              type="text"
+            />
+          </div>
         </div>
         <div className="flex items-center gap-2 ml-2">
           <Select

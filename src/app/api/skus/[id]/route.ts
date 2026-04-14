@@ -24,6 +24,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
       packagingFee,
       weight,
       returnRate,
+      finalPrice,
       pricingStrategy,
       customMultiplier,
     } = body;
@@ -38,6 +39,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
         ...(packagingFee !== undefined && { packagingFee }),
         ...(weight !== undefined && { weight }),
         ...(returnRate !== undefined && { returnRate }),
+        ...(finalPrice !== undefined && { finalPrice }),
         ...(pricingStrategy !== undefined && { pricingStrategy }),
         ...(customMultiplier !== undefined && { customMultiplier }),
       },

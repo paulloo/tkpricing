@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Upload, FileText, AlertCircle, CheckCircle2, Package } from 'lucide-react';
+import { toast } from 'sonner';
 
 // ─── 妙手 CSV 列索引 ──────────────────────────────────────────────────────────
 const COL = {
@@ -226,8 +227,11 @@ export function MiaoshouImportDialog({ open, onOpenChange }: MiaoshouImportDialo
 
     try {
       await importData({ products });
+      toast.success(`导入成功：${products.length} 个商品，${totalSKUs} 个 SKU`);
       onOpenChange(false);
       reset();
+    } catch {
+      toast.error('导入失败，请重试');
     } finally {
       setIsImporting(false);
     }

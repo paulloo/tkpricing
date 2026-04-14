@@ -4,6 +4,7 @@
 // ============================================
 
 import { create } from 'zustand';
+import { useMemo } from 'react';
 import type { GlobalParams, Product, SKUVariant, PricingStrategy } from '@/types';
 import {
   createDefaultGlobalParams,
@@ -65,6 +66,7 @@ function mapProductFromDB(dbProduct: {
     domesticShipping: number;
     packagingFee: number;
     weight: number;
+    finalPrice?: number | null;
     currentPrice?: number | null;
     inventory?: number | null;
     returnRate: number | null;
@@ -87,10 +89,10 @@ function mapProductFromDB(dbProduct: {
       domesticShipping: Number(v.domesticShipping),
       packagingFee: Number(v.packagingFee),
       weight: Number(v.weight),
+      finalPrice: v.finalPrice != null ? Number(v.finalPrice) : null,
       currentPrice: v.currentPrice != null ? Number(v.currentPrice) : undefined,
       inventory: v.inventory != null ? v.inventory : undefined,
       returnRate: v.returnRate !== null ? Number(v.returnRate) : null,
-      finalPrice: null,
       pricingStrategy: (v.pricingStrategy as PricingStrategy) || null,
       customMultiplier: v.customMultiplier !== null ? Number(v.customMultiplier) : undefined,
     })),
@@ -217,6 +219,7 @@ export const useStore = create<StoreState>()((set, get) => ({
           domesticShipping: number;
           packagingFee: number;
           weight: number;
+          finalPrice?: number | null;
           currentPrice?: number | null;
           inventory?: number | null;
           returnRate: number | null;
@@ -694,11 +697,11 @@ export const useStore = create<StoreState>()((set, get) => ({
   },
 }));
 
-// 计算派生状态的 Hook
+// 计算派生状态的 Hook（useMemo 避免无关 state 变化触发重算）
 export function useCalculatedProducts() {
   const { products, globalParams } = useStore();
 
-  return products.map((product) => {
+  return useMemo(() => products.map((product) => {
     const variants = product.variants.map((sku) => ({
       ...sku,
       calculated: calculateSKU(sku, globalParams),
@@ -742,7 +745,7 @@ export function useCalculatedProducts() {
         priceRange,
       },
     };
-  });
+  }), [products, globalParams]);
 }
 
 // 计算汇总统计

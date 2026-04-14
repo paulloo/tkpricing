@@ -24,6 +24,7 @@ interface ProductCardProps {
     id: string;
     name: string;
     url: string;
+    imageUrl?: string;
     isExpanded: boolean;
     variants: SKUData[];
     summary: {
@@ -99,6 +100,17 @@ export function ProductCard({ product }: ProductCardProps) {
             <ChevronRight className="h-4 w-4 text-slate-400" />
           )}
         </button>
+
+        {/* 商品主图 */}
+        {product.imageUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={product.imageUrl}
+            alt=""
+            loading="lazy"
+            className="w-10 h-10 md:w-12 md:h-12 object-cover shrink-0 border-r border-slate-100"
+          />
+        ) : null}
 
         {/* Product name + url */}
         <div className="flex-1 min-w-0 px-3 py-2 flex flex-col justify-center">

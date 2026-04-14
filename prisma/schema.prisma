@@ -100,6 +100,7 @@ model SKU {
   
   // 覆盖设置
   returnRate       Decimal? @map("return_rate") @db.Decimal(10, 4)
+  finalPrice       Decimal? @map("final_price") @db.Decimal(10, 2)
   pricingStrategy  String?  @map("pricing_strategy") @db.VarChar(20)
   customMultiplier Decimal? @map("custom_multiplier") @db.Decimal(10, 2)
   
