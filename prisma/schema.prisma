@@ -14,30 +14,40 @@ datasource db {
 // ============================================
 model GlobalConfig {
   id String @id @default(uuid())
-  
+
   // 汇率与物流
-  exchangeRate      Decimal @default(1.52) @map("exchange_rate") @db.Decimal(10, 4)
-  shippingRate      Decimal @default(5.30) @map("shipping_rate") @db.Decimal(10, 2)
-  minOperationFee   Decimal @default(0.80) @map("min_operation_fee") @db.Decimal(10, 2)
-  labelFee          Decimal @default(0.30) @map("label_fee") @db.Decimal(10, 2)
-  lastMileFee       Decimal @default(2.50) @map("last_mile_fee") @db.Decimal(10, 2)
-  
-  // 费用率
-  platformFeeRate   Decimal @default(0.1212) @map("platform_fee_rate") @db.Decimal(10, 4)
-  returnRate        Decimal @default(0.15) @map("return_rate") @db.Decimal(10, 4)
-  targetProfitMargin Decimal @default(0.25) @map("target_profit_margin") @db.Decimal(10, 4)
-  
-  // 定价策略
+  exchangeRate    Decimal @default(0.58)  @map("exchange_rate")     @db.Decimal(10, 4)
+  shippingRate    Decimal @default(35.0)  @map("shipping_rate")     @db.Decimal(10, 2)
+  handlingFee     Decimal @default(2.0)   @map("handling_fee")      @db.Decimal(10, 2)
+  minHandlingFee  Decimal @default(5.0)   @map("min_handling_fee")  @db.Decimal(10, 2)
+  lastMileFee     Decimal @default(3.0)   @map("last_mile_fee")     @db.Decimal(10, 2)
+
+  // 平台费率（各项独立存储）
+  commissionRate  Decimal @default(0.0432) @map("commission_rate")  @db.Decimal(10, 4)
+  transactionFee  Decimal @default(0.0378) @map("transaction_fee")  @db.Decimal(10, 4)
+  lvgTaxRate      Decimal @default(0.10)   @map("lvg_tax_rate")     @db.Decimal(10, 4)
+  marketingRate   Decimal @default(0.054)  @map("marketing_rate")   @db.Decimal(10, 4)
+  sfpFee          Decimal @default(0.0)    @map("sfp_fee")          @db.Decimal(10, 4)
+
+  // 运营成本
+  affiliateRate   Decimal @default(0.15)  @map("affiliate_rate")    @db.Decimal(10, 4)
+  adsRate         Decimal @default(0.08)  @map("ads_rate")          @db.Decimal(10, 4)
+
+  // 退货模型
+  returnRate      Decimal @default(0.05)  @map("return_rate")       @db.Decimal(10, 4)
+  returnLossRate  Decimal @default(0.50)  @map("return_loss_rate")  @db.Decimal(10, 4)
+
+  // 目标利润与定价策略
+  targetProfitRate  Decimal @default(0.20) @map("target_profit_rate") @db.Decimal(10, 4)
   pricingStrategy   String  @default("profit") @map("pricing_strategy") @db.VarChar(20)
   customMultiplier  Decimal? @map("custom_multiplier") @db.Decimal(10, 2)
-  
+
   // 时间戳
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-  
-  // 关联 - 可选的用户系统
+  updatedAt DateTime @updatedAt      @map("updated_at")
+
   userId String? @unique @map("user_id")
-  
+
   @@map("global_configs")
 }
 

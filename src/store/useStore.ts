@@ -103,28 +103,40 @@ function mapProductFromDB(dbProduct: {
 function mapConfigFromDB(dbConfig: {
   exchangeRate: number;
   shippingRate: number;
-  minOperationFee: number;
-  labelFee: number;
+  handlingFee: number;
+  minHandlingFee: number;
   lastMileFee: number;
-  platformFeeRate: number;
+  commissionRate: number;
+  transactionFee: number;
+  lvgTaxRate: number;
+  marketingRate: number;
+  sfpFee: number;
+  affiliateRate: number;
+  adsRate: number;
   returnRate: number;
-  targetProfitMargin: number;
+  returnLossRate: number;
+  targetProfitRate: number;
   pricingStrategy: string;
   customMultiplier: number | null;
 }): Partial<GlobalParams> {
   return {
-    exchangeRate: Number(dbConfig.exchangeRate),
-    shippingRate: Number(dbConfig.shippingRate),
-    handlingFee: Number(dbConfig.labelFee),
-    minHandlingFee: Number(dbConfig.minOperationFee),
-    lastMileFee: Number(dbConfig.lastMileFee),
-    commissionRate: Number(dbConfig.platformFeeRate),
-    returnRate: Number(dbConfig.returnRate),
-    targetProfitRate: Number(dbConfig.targetProfitMargin),
-    pricingStrategy: dbConfig.pricingStrategy as PricingStrategy,
+    exchangeRate:     Number(dbConfig.exchangeRate),
+    shippingRate:     Number(dbConfig.shippingRate),
+    handlingFee:      Number(dbConfig.handlingFee),
+    minHandlingFee:   Number(dbConfig.minHandlingFee),
+    lastMileFee:      Number(dbConfig.lastMileFee),
+    commissionRate:   Number(dbConfig.commissionRate),
+    transactionFee:   Number(dbConfig.transactionFee),
+    lvgTaxRate:       Number(dbConfig.lvgTaxRate),
+    marketingRate:    Number(dbConfig.marketingRate),
+    sfpFee:           Number(dbConfig.sfpFee),
+    affiliateRate:    Number(dbConfig.affiliateRate),
+    adsRate:          Number(dbConfig.adsRate),
+    returnRate:       Number(dbConfig.returnRate),
+    returnLossRate:   Number(dbConfig.returnLossRate),
+    targetProfitRate: Number(dbConfig.targetProfitRate),
+    pricingStrategy:  dbConfig.pricingStrategy as PricingStrategy,
     ...(dbConfig.customMultiplier !== null && { customMultiplier: Number(dbConfig.customMultiplier) }),
-    // transactionFee / lvgTaxRate / marketingRate / sfpFee / affiliateRate / adsRate / returnLossRate
-    // 不在 DB schema 中，保留本地状态
   };
 }
 
