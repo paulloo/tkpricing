@@ -152,13 +152,16 @@ export function calculateSKU(
 
   // ========== 8. 退货模型 ==========
   const skuReturnRate = sku.returnRate ?? returnRate;
-  
-  // 退货损失 = 售价 × 退货率 × 退货损失比例 + 退货处理成本
-  const returnCost = finalPrice * skuReturnRate * returnLossRate;
-  
-  // 实际净利润 = 净利润 × (1 - 退货率) - 退货损失
-  const actualNetProfit = netProfit * (1 - skuReturnRate) - returnCost;
-  
+
+  // 退货损失 = 损坏商品的采购成本（退回商品中 returnLossRate 比例彻底损坏，损失的是成本而非售价）
+  const returnCost = totalCostMYR * skuReturnRate * returnLossRate;
+
+  // 退货订单中不可退的运营费（广告费、联盟费在退货后不返还）
+  const returnNonRefundableCost = (affiliateCost + adsCost) * skuReturnRate;
+
+  // 实际净利润 = 有效完成订单的净利润 - 退货单不可退运营费 - 损坏成本损失
+  const actualNetProfit = netProfit * (1 - skuReturnRate) - returnNonRefundableCost - returnCost;
+
   // 实际利润率
   const actualMargin = actualNetProfit / finalPrice;
 

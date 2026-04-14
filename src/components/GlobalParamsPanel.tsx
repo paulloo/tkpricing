@@ -262,9 +262,13 @@ export function GlobalParamsPanel() {
         <Section title="利润 & 退货" icon={<Target className="h-3.5 w-3.5 text-emerald-500" />} defaultExpanded={false}>
           <div className="grid grid-cols-2 gap-2">
             <ParamField label="目标利润率" value={globalParams.targetProfitRate * 100} onChange={(v) => rate('targetProfitRate', v)} suffix="%" step={0.5} />
-            <ParamField label="退货/破损率" value={globalParams.returnRate * 100} onChange={(v) => rate('returnRate', v)} suffix="%" step={0.5} />
+            <div>
+              <ParamField label="退货/破损率" value={globalParams.returnRate * 100} onChange={(v) => rate('returnRate', v)} suffix="%" step={0.5} />
+              <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">每100单中有多少单退货</p>
+            </div>
             <div className="col-span-2">
               <ParamField label="退货损失率" value={globalParams.returnLossRate * 100} onChange={(v) => rate('returnLossRate', v)} suffix="%" step={0.5} />
+              <p className="text-[10px] text-slate-400 mt-0.5 leading-tight">退回商品中损坏/无法再售的比例，损失按采购成本计算</p>
             </div>
           </div>
         </Section>
