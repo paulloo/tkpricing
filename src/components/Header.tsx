@@ -33,7 +33,8 @@ import {
   MoreHorizontal,
   Calculator,
   Settings2,
-  ShoppingBag
+  ShoppingBag,
+  Github
 } from 'lucide-react';
 import { MiaoshouImportDialog } from '@/components/MiaoshouImportDialog';
 
@@ -204,6 +205,17 @@ export function Header({ lastSaved, onAddProduct, onOpenParams }: HeaderProps) {
                 折叠
               </Button>
             </div>
+
+            {/* GitHub */}
+            <a
+              href="https://github.com/paulloo/tkpricing"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hidden sm:flex items-center gap-1.5 h-8 px-2 text-xs text-slate-500 hover:text-slate-800 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors"
+            >
+              <Github className="h-3.5 w-3.5" />
+              <span className="hidden md:inline">开源</span>
+            </a>
 
             {/* 添加商品 */}
             <Button
