@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'TK Shop 智能定价计算器',
-  description: '专为 TikTok Shop 马来西亚站点设计的智能定价计算器',
+  description: 'TikTok Shop 跨境多店铺定价计算器：按目标净利率反推售价',
 };
 
 export default function RootLayout({

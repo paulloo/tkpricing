@@ -1,0 +1,25 @@
+name: 费率 / 预设更新
+description: 平台费率变了，或想补充某个站点的预设
+labels: [fee-preset]
+body:
+  - type: input
+    id: site
+    attributes:
+      label: 站点与店铺类型
+      placeholder: 例如：马来西亚 跨境店
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: 变化内容
+      description: 哪项费用、旧值、新值、是否含税、生效日期
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: 来源链接
+      description: 卖家中心 / 卖家大学公告优先
+    validations:
+      required: true

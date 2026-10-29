@@ -1,17 +1,21 @@
 {
   "name": "tkpricing",
-  "version": "0.1.0",
+  "version": "3.0.0",
   "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:push": "prisma db push",
+    "db:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts"
+    "postinstall": "prisma generate"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
@@ -72,18 +76,24 @@
     "@types/pg": "^8.20.0",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^5.1.1",
+    "@vitest/coverage-v8": "^3.2.7",
     "autoprefixer": "^10.4.23",
+    "dotenv": "^16.6.1",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
     "globals": "^16.5.0",
-    "kimi-plugin-inspect-react": "^1.0.3",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.19",
     "tailwindcss-animate": "^1.0.7",
+    "tsx": "^4.23.15",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.46.4",
-    "vite": "^7.2.4"
+    "vitest": "^3.2.7"
+  },
+  "description": "TikTok Shop 跨境卖家的多店铺定价计算器：按目标净利率反推售价，计入平台费、达人佣金、广告、体积重物流与退货损失。",
+  "license": "MIT",
+  "packageManager": "pnpm@10.18.3",
+  "engines": {
+    "node": ">=20"
   }
 }

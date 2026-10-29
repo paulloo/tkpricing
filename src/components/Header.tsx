@@ -1,19 +1,14 @@
-// ============================================
-// 头部组件 (优化版，支持移动端)
-// ============================================
+// 顶栏：店铺切换、店铺设置、添加商品、数据操作
 
-import { useState } from 'react';
-import { useStore } from '@/store/useStore';
+import { Calculator, ChevronDown, ChevronUp, Download, FileSpreadsheet, Github, MoreHorizontal, Plus, Settings2, ShoppingBag, Trash2, Upload } from 'lucide-react';
+import { toast } from 'sonner';
+import type { CalculatedProduct } from '@/domain/pricing/portfolio';
+import { useCurrentShop, useStore } from '@/store/useStore';
+import { api } from '@/lib/api-client';
+import { productsToCsv } from '@/lib/csv-export';
+import { downloadFile, today } from '@/lib/download';
+import { notifyError } from '@/lib/notify';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,315 +16,126 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Plus,
-  ChevronDown,
-  ChevronUp,
-  Download,
-  Upload,
-  Trash2,
-  FileSpreadsheet,
-  Save,
-  MoreHorizontal,
-  Calculator,
-  Settings2,
-  ShoppingBag,
-  Github
-} from 'lucide-react';
-import { MiaoshouImportDialog } from '@/components/MiaoshouImportDialog';
+import { ShopSwitcher } from '@/components/shop/ShopSwitcher';
+
+export type HeaderDialog = 'addProduct' | 'createShop' | 'miaoshou' | 'restore' | 'deleteShop' | 'settings';
 
 interface HeaderProps {
-  lastSaved: string | null;
-  onAddProduct: () => void;
-  onOpenParams: () => void;
+  products: readonly CalculatedProduct[];
+  onOpen: (dialog: HeaderDialog) => void;
 }
 
-export function Header({ lastSaved, onAddProduct, onOpenParams }: HeaderProps) {
-  const { 
-    expandAllProducts, 
-    collapseAllProducts, 
-    exportData, 
-    importData: importDataFromStore, 
-    clearAllData,
-    products 
-  } = useStore();
-  
-  const [importDialogOpen, setImportDialogOpen] = useState(false);
-  const [importText, setImportText] = useState('');
-  const [miaoshouDialogOpen, setMiaoshouDialogOpen] = useState(false);
-  const [clearDialogOpen, setClearDialogOpen] = useState(false);
-  const [confirmText, setConfirmText] = useState('');
+const REPO_URL = 'https://github.com/paulloo/tkpricing';
 
-  // 格式化最后保存时间
-  const formatLastSaved = () => {
-    if (!lastSaved) return '未保存';
-    const date = new Date(lastSaved);
-    const now = new Date();
-    const diff = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
-    if (diff < 60) return '刚刚';
-    if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`;
-    if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`;
-    return date.toLocaleDateString();
-  };
+const safeName = (name: string) => name.replace(/[\\/:*?"<>|\s]+/g, '_');
 
-  // 导出数据
-  const handleExport = () => {
-    const data = exportData();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `tk_pricing_backup_${new Date().toISOString().split('T')[0]}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
+export function Header({ products, onOpen }: HeaderProps) {
+  const shop = useCurrentShop();
+  const { setAllExpanded, draftConfig } = useStore();
 
-  // 导入数据
-  const handleImport = () => {
+  const exportJson = async (scope: 'shop' | 'all') => {
     try {
-      const data = JSON.parse(importText);
-      importDataFromStore(data);
-      setImportDialogOpen(false);
-      setImportText('');
-      alert('数据导入成功！');
+      const backup = scope === 'shop' && shop ? await api.exportShop(shop.id) : await api.exportAll();
+      const name = scope === 'shop' && shop ? safeName(shop.name) : 'all-shops';
+      downloadFile(`tkpricing_${name}_${today()}.json`, JSON.stringify(backup, null, 2), 'application/json');
+      toast.success('备份已下载');
     } catch (error) {
-      alert('数据格式错误，请检查JSON格式');
+      notifyError(error, '导出失败');
     }
   };
 
-  // 清空数据
-  const handleClear = () => {
-    if (confirmText === '确认删除') {
-      clearAllData();
-      setClearDialogOpen(false);
-      setConfirmText('');
-    }
-  };
-
-  // 导出CSV
-  const handleExportCSV = () => {
-    const data = exportData();
-    const rows: string[] = [];
-    
-    // CSV 头部
-    rows.push('商品名称,商品链接,SKU名称,采购成本,包装费,重量,退货率,最终定价');
-    
-    // 数据行
-    data.products.forEach((product) => {
-      product.variants.forEach((variant) => {
-        rows.push([
-          product.name,
-          product.url,
-          variant.name,
-          variant.purchaseCost,
-          variant.packagingFee || 0,
-          variant.weight,
-          variant.returnRate ?? data.globalParams.returnRate,
-          variant.finalPrice ?? '',
-        ].join(','));
-      });
-    });
-    
-    const csv = rows.join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `tk_pricing_export_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const exportCsv = () => {
+    if (!shop) return;
+    downloadFile(`tkpricing_${safeName(shop.name)}_${today()}.csv`, productsToCsv(products), 'text/csv;charset=utf-8');
   };
 
   return (
-    <header className="bg-white border-b border-slate-200 sticky top-0 z-40">
-      <div className="px-3 md:px-4 py-2 md:py-3">
-        <div className="flex items-center justify-between">
-          {/* 左侧：Logo和标题 */}
-          <div className="flex items-center gap-2 md:gap-3">
-            {/* 参数设置按钮 */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onOpenParams}
-              className="h-8 px-2 gap-1.5 text-xs"
-            >
+    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white">
+      <div className="flex items-center justify-between gap-2 px-3 py-2 md:px-4">
+        <div className="flex min-w-0 items-center gap-2">
+          <div className="hidden h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 sm:flex">
+            <Calculator className="h-4 w-4 text-white" />
+          </div>
+          <h1 className="hidden text-sm font-bold text-slate-800 lg:block">TK Shop 定价计算器</h1>
+          <ShopSwitcher onCreate={() => onOpen('createShop')} />
+          {shop && (
+            <Button variant="outline" size="sm" onClick={() => onOpen('settings')} className="relative h-8 gap-1.5 px-2 text-xs">
               <Settings2 className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">参数</span>
+              <span className="hidden sm:inline">店铺设置</span>
+              {draftConfig && <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-amber-500" aria-label="有未保存的设置" />}
             </Button>
-            
-            <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center shadow-sm">
-              <Calculator className="h-4 w-4 md:h-5 md:w-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-sm md:text-lg font-bold text-slate-800">
-                TK Shop 定价计算器
-              </h1>
-              <div className="flex items-center gap-1 md:gap-2 text-[10px] md:text-xs text-slate-500">
-                <span>v2.5</span>
-                <span className="hidden md:inline">•</span>
-                <span className="hidden md:flex items-center gap-1">
-                  <Save className="h-3 w-3" />
-                  {formatLastSaved()}
-                </span>
-              </div>
-            </div>
-          </div>
+          )}
+        </div>
 
-          {/* 右侧：操作按钮 */}
-          <div className="flex items-center gap-1 md:gap-2">
-            {/* 展开/折叠 - 桌面端 */}
-            <div className="hidden md:flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={expandAllProducts}
-                disabled={products.length === 0}
-                className="h-8 text-xs"
-              >
-                <ChevronDown className="h-3.5 w-3.5 mr-1" />
-                展开
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={collapseAllProducts}
-                disabled={products.length === 0}
-                className="h-8 text-xs"
-              >
-                <ChevronUp className="h-3.5 w-3.5 mr-1" />
-                折叠
-              </Button>
-            </div>
-
-            {/* GitHub */}
-            <a
-              href="https://github.com/paulloo/tkpricing"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hidden sm:flex items-center gap-1.5 h-8 px-2 text-xs text-slate-500 hover:text-slate-800 border border-slate-200 rounded-md hover:bg-slate-50 transition-colors"
-            >
-              <Github className="h-3.5 w-3.5" />
-              <span className="hidden md:inline">开源</span>
-            </a>
-
-            {/* 添加商品 */}
-            <Button
-              onClick={onAddProduct}
-              className="h-8 text-xs bg-blue-600 hover:bg-blue-700"
-            >
-              <Plus className="h-3.5 w-3.5 mr-1" />
-              <span className="hidden md:inline">添加商品</span>
-              <span className="md:hidden">添加</span>
+        <div className="flex shrink-0 items-center gap-1 md:gap-2">
+          <a
+            href={REPO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hidden h-8 items-center gap-1.5 rounded-md border border-slate-200 px-2 text-xs text-slate-500 hover:bg-slate-50 hover:text-slate-800 md:flex"
+          >
+            <Github className="h-3.5 w-3.5" />
+            开源
+          </a>
+          {shop && (
+            <Button onClick={() => onOpen('addProduct')} className="h-8 bg-blue-600 text-xs hover:bg-blue-700">
+              <Plus className="mr-1 h-3.5 w-3.5" />
+              添加商品
             </Button>
-
-            {/* 更多操作 */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem onClick={handleExportCSV}>
-                  <FileSpreadsheet className="h-4 w-4 mr-2" />
-                  导出 CSV
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExport}>
-                  <Download className="h-4 w-4 mr-2" />
-                  备份数据
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setMiaoshouDialogOpen(true)}>
-                  <ShoppingBag className="h-4 w-4 mr-2" />
-                  导入妙手
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setImportDialogOpen(true)}>
-                  <Upload className="h-4 w-4 mr-2" />
-                  导入备份
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem 
-                  onClick={() => setClearDialogOpen(true)}
-                  className="text-red-600 focus:text-red-600"
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  清空全部
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0" aria-label="更多操作">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-52">
+              {shop && (
+                <>
+                  <DropdownMenuItem onClick={() => setAllExpanded(true)}>
+                    <ChevronDown className="mr-2 h-4 w-4" />
+                    全部展开
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setAllExpanded(false)}>
+                    <ChevronUp className="mr-2 h-4 w-4" />
+                    全部折叠
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onOpen('miaoshou')}>
+                    <ShoppingBag className="mr-2 h-4 w-4" />
+                    导入妙手 CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={exportCsv} disabled={products.length === 0}>
+                    <FileSpreadsheet className="mr-2 h-4 w-4" />
+                    导出定价表 CSV
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => exportJson('shop')}>
+                    <Download className="mr-2 h-4 w-4" />
+                    备份当前店铺
+                  </DropdownMenuItem>
+                </>
+              )}
+              <DropdownMenuItem onClick={() => exportJson('all')}>
+                <Download className="mr-2 h-4 w-4" />
+                备份全部店铺
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => onOpen('restore')}>
+                <Upload className="mr-2 h-4 w-4" />
+                恢复备份
+              </DropdownMenuItem>
+              {shop && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => onOpen('deleteShop')} className="text-red-600 focus:text-red-600">
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    删除当前店铺
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
-
-      {/* 导入数据对话框 */}
-      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
-        <DialogContent className="sm:max-w-md mx-4">
-          <DialogHeader>
-            <DialogTitle>导入数据</DialogTitle>
-            <DialogDescription>
-              粘贴之前导出的JSON数据以恢复配置
-            </DialogDescription>
-          </DialogHeader>
-          <textarea
-            value={importText}
-            onChange={(e) => setImportText(e.target.value)}
-            placeholder={`{\n  "globalParams": {...},\n  "products": [...]\n}`}
-            className="w-full h-48 p-3 text-xs font-mono border rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setImportDialogOpen(false)}>
-              取消
-            </Button>
-            <Button onClick={handleImport} disabled={!importText.trim()}>
-              导入
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* 妙手导入对话框 */}
-      <MiaoshouImportDialog
-        open={miaoshouDialogOpen}
-        onOpenChange={setMiaoshouDialogOpen}
-      />
-
-      {/* 清空数据确认对话框 */}
-      <Dialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
-        <DialogContent className="sm:max-w-md mx-4">
-          <DialogHeader>
-            <DialogTitle className="text-red-600">危险操作</DialogTitle>
-            <DialogDescription>
-              此操作将删除所有商品和配置，且无法恢复。
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-slate-600">
-              请输入 <strong>确认删除</strong> 以继续：
-            </p>
-            <Input
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
-              placeholder="确认删除"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setClearDialogOpen(false)}>
-              取消
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={handleClear}
-              disabled={confirmText !== '确认删除'}
-            >
-              确认删除
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </header>
   );
 }

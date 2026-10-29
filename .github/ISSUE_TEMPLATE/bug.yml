@@ -1,0 +1,19 @@
+name: 问题反馈
+description: 计算结果不对，或者功能出错
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: 发生了什么
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 你期望的结果及依据
+      description: 计算问题请附上店铺设置和 SKU 数据（可用"备份当前店铺"导出后删去敏感信息）
+  - type: input
+    id: version
+    attributes:
+      label: 版本 / 部署方式
