@@ -1,21 +1,19 @@
-// Prisma Client 单例模式
-// 防止开发环境下热重载创建多个实例
+// Prisma Client 单例，防止开发环境热重载时创建多个连接池
 
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { Pool } = require('pg');
 
-const globalForPrisma = global as unknown as { prisma: PrismaClient };
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
-const prismaClientSingleton = () => {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL }) as any;
-  const adapter = new PrismaPg(pool);
-  return new PrismaClient({ adapter });
-};
+function createClient(): PrismaClient {
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error('DATABASE_URL 未配置，请参考 .env.example');
+  }
+  return new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
+}
 
-export const prisma = globalForPrisma.prisma ?? prismaClientSingleton();
+export const prisma = globalForPrisma.prisma ?? createClient();
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
 

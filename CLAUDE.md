@@ -4,80 +4,52 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-TK Shop 智能定价计算器 — a pricing calculator web app for TikTok Shop (Malaysia). Manages multi-SKU products with configurable cost models, platform fee rates, return-rate models, and four pricing strategies (drainage/profit/anchor/custom).
+TK Shop 定价计算器 — an open-source, multi-shop pricing calculator for TikTok Shop Southeast Asia cross-border sellers. Each shop (one site, e.g. MY/TH) has its own fee lines, shipping, return model and target margins. The engine solves for the lowest price that reaches a target *expected net margin*. See `docs/pricing-model.md`.
 
 ## Commands
 
 ```bash
-# Development
-pnpm dev           # Start Next.js dev server
-pnpm build         # Production build
-pnpm lint          # ESLint
-
-# Database (requires DATABASE_URL in .env)
-pnpm db:generate   # Regenerate Prisma client after schema changes
-pnpm db:migrate    # Create + apply migration (dev)
-pnpm db:push       # Push schema without migration (quick dev iteration)
-pnpm db:studio     # Open Prisma Studio GUI
-pnpm db:seed       # Seed database (prisma/seed.ts)
-
-# Add shadcn/ui components
-npx shadcn add <component-name>
+pnpm dev                          # Next.js dev server
+pnpm build                        # Production build (standalone output)
+pnpm lint                         # ESLint (flat config, eslint .)
+pnpm typecheck                    # tsc --noEmit
+pnpm test                         # Vitest: unit + API integration
+pnpm vitest run src/domain/pricing/calculate.test.ts   # single file
+pnpm db:migrate --name <change>   # create + apply migration (dev)
+pnpm db:deploy                    # apply migrations (prod / CI)
+pnpm db:studio
 ```
 
-## Environment
-
-```env
-DATABASE_URL="postgresql://user:password@host:5432/dbname?schema=public"
-```
+API integration tests (`tests/api`) run against `TEST_DATABASE_URL`, or `DATABASE_URL` with `_test` appended to the db name. The test DB is created + migrated automatically and **truncated before every test** — never point it at real data. Tests skip when no database URL is set.
 
 ## Architecture
 
-This is a **Next.js 15 App Router** application with a PostgreSQL backend via Prisma ORM.
-
-### Data flow
-
 ```
-Browser → Zustand store (src/store/useStore.ts)
-       → Next.js API routes (src/app/api/)
-       → Prisma client (src/lib/prisma.ts singleton)
-       → PostgreSQL
+src/domain/      Pure TypeScript, no framework/DB imports. All business rules live here.
+  shop-config.ts   zod schema for a shop's config (fee lines, currency, firstLeg, lastMile, returns, pricing)
+  presets.ts       sites + fee presets (copied into a shop at creation)
+  contracts.ts     DTOs + zod request schemas shared by server and client
+  backup.ts        backup format v2 + legacy v1 conversion
+  pricing/         shipping → fees → economics (expected profit at a price) → solver → calculate → portfolio
+  import/          Miaoshou ERP CSV parser
+src/server/      http.ts (route() wrapper, readJson, envelope), mappers (Decimal→number), repositories, services
+src/app/api/     Thin route handlers: validate with contracts, call repositories, return ok()
+src/store/       Zustand: shop-slice (shops, current shop, config draft) + product-slice (optimistic edits with rollback)
+src/hooks/       useCalculatedProducts — runs the engine with the effective config (draft ?? saved)
+src/components/  fields/ (editable inputs), shop/, product/, dialogs/; components/ui is shadcn (don't hand-edit)
+src/proxy.ts     Optional HTTP Basic auth (BASIC_AUTH_USER / BASIC_AUTH_PASSWORD) — Next 16 "proxy" = middleware
 ```
 
-### Core calculation engine (`src/lib/calculator.ts`)
+Data flow: component → store action → `lib/api-client` → `/api/*` route → repository → Prisma → PostgreSQL. Components never call the API directly. Pricing is computed client-side from DTOs; nothing computed is stored.
 
-All pricing math lives here — no calculation logic in components or API routes. Key functions:
+API: `/api/shops`, `/api/shops/:shopId` (GET/PATCH/DELETE), `/api/shops/:shopId/products|import|export`, `/api/products/:productId` (PATCH/DELETE), `/api/products/:productId/skus` (POST), `/api/skus/:skuId` (PATCH/DELETE), `/api/backup` (GET export all / POST restore), `/api/presets`, `/api/health`. Responses are `{ success, data }` or `{ success: false, error, details? }`.
 
-- `calculateSKU(sku, globalParams)` — produces the full `SKUCalculation` result including costs (RMB + MYR), platform fees, return-rate model, and profit metrics
-- `createDefaultGlobalParams()` — canonical defaults for all rate fields
-- `PRICING_STRATEGIES` — strategy multiplier config (drainage 1.3x, profit 2.0x, anchor 2.5x, custom)
+## Conventions
 
-The calculation pipeline order: product cost → international shipping → total cost (RMB→MYR) → break-even price → suggested price → strategy price → final price → profit → return-adjusted actual profit.
-
-### State management (`src/store/useStore.ts`)
-
-Single Zustand store holds `products` and `globalParams`. All mutations go through the store, which calls the API routes and updates local state. Components never call the API directly.
-
-### API routes (`src/app/api/`)
-
-RESTful routes following Next.js App Router conventions. Each route file exports named handlers (`GET`, `POST`, `PUT`, `DELETE`). Routes mirror the Prisma schema: `/api/config`, `/api/products`, `/api/products/[id]`, `/api/skus`, `/api/skus/[id]`, `/api/import`.
-
-### Database schema (`prisma/schema.prisma`)
-
-Three models:
-- `GlobalConfig` — singleton row per user; holds all rate/fee/strategy defaults
-- `Product` — product name, URL, display order, expansion state
-- `SKU` (table: `sku_variants`) — cost inputs and per-SKU overrides for return rate, pricing strategy, and final price; cascade-deletes with parent product
-
-### Type system (`src/types/index.ts`)
-
-`SKUVariant` is the input shape; `SKUCalculation` is the computed output; `SKUData` combines both. `GlobalParams` maps 1:1 to `GlobalConfig` schema fields (note: DB uses `Decimal`, TypeScript uses `number`).
-
-## Code conventions
-
-- Import order: React → third-party → `@/types` → `@/store` → `@/lib` → `@/components/ui` → `@/components`
-- Use `cn()` from `@/lib/utils` for all Tailwind class merging
-- Naming: PascalCase components, `use*` hooks, `route.ts` for API files, camelCase utilities
-- After modifying `prisma/schema.prisma`, always run `pnpm db:generate` to update the client
-- Database migration workflow: `pnpm db:migrate -- --name <describe_change>` then `pnpm db:generate`
-- SKU-level fields (`returnRate`, `pricingStrategy`, `customMultiplier`) are nullable — `null` means "inherit from global config"
+- Business logic only in `src/domain`, with tests written first. Rates are fractions (0.0378), never percents.
+- SKU/product override fields are nullable: `null` = inherit from shop config (`returnRate`, `finalPrice`, `pricingStrategy`, `customMargin`, product `commissionRate`).
+- Shop config is a JSON column validated by `shopConfigSchema`; if its shape changes, bump `SHOP_CONFIG_SCHEMA_VERSION` and migrate stored configs.
+- Schema changes: edit `prisma/schema.prisma`, run `pnpm db:migrate --name <change>`, and hand-check the SQL for data migration needs.
+- Import order: React → third-party → `@/domain` → `@/store` → `@/lib` → `@/components/ui` → `@/components`. Use `cn()` from `@/lib/utils`.
+- React 19 lint rules forbid synchronous setState in effects: derive state during render or reset it in event handlers.
+- UI copy is Simplified Chinese.
